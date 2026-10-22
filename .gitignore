@@ -1,0 +1,19 @@
+# Never commit real contacts, uploaded documents or credentials.
+.env
+.env.*
+!.env.example
+private/
+private-media/
+backups/
+*.sqlite3
+*.sqlite3-*
+staticfiles/
+__pycache__/
+*.pyc
+.venv/
+venv/
+.coverage
+.pytest_cache/
+.DS_Store
+
+Makosh_Fleet_Initial_Data.csv

@@ -1,0 +1,71 @@
+name: makosh-fleet
+x-app-env: &app-env
+  DJANGO_SECRET_KEY: ${DJANGO_SECRET_KEY:?Generate .env with scripts/init_env.py}
+  POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Generate .env with scripts/init_env.py}
+  POSTGRES_DB: ${POSTGRES_DB:-makosh}
+  POSTGRES_USER: ${POSTGRES_USER:-makosh}
+  POSTGRES_HOST: db
+  POSTGRES_PORT: 5432
+  DJANGO_DEBUG: "0"
+  DJANGO_ALLOWED_HOSTS: ${DJANGO_ALLOWED_HOSTS:-localhost,127.0.0.1}
+  DJANGO_CSRF_TRUSTED_ORIGINS: ${DJANGO_CSRF_TRUSTED_ORIGINS:-}
+  DJANGO_SECURE_COOKIES: ${DJANGO_SECURE_COOKIES:-1}
+  DJANGO_HTTPS_REDIRECT: ${DJANGO_HTTPS_REDIRECT:-1}
+  DJANGO_TRUST_PROXY: ${DJANGO_TRUST_PROXY:-0}
+  DJANGO_HSTS_SECONDS: ${DJANGO_HSTS_SECONDS:-3600}
+  MEDIA_ROOT: /data/uploads
+services:
+  db:
+    image: postgres:17-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-makosh}
+      POSTGRES_USER: ${POSTGRES_USER:-makosh}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Generate .env}
+    volumes:
+      - db_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+    # Database ports are not published.
+  migrate:
+    build: .
+    image: makosh-fleet:local
+    environment: *app-env
+    command: ["python", "manage.py", "migrate", "--noinput"]
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: "no"
+    read_only: true
+    tmpfs: [/tmp]
+    security_opt: ["no-new-privileges:true"]
+    cap_drop: [ALL]
+  web:
+    build: .
+    image: makosh-fleet:local
+    restart: unless-stopped
+    environment: *app-env
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+      db:
+        condition: service_healthy
+    ports:
+      - "127.0.0.1:${WEB_PORT:-8000}:8000"
+    volumes:
+      - uploads:/data/uploads
+    read_only: true
+    tmpfs: [/tmp]
+    security_opt: ["no-new-privileges:true"]
+    cap_drop: [ALL]
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health/', timeout=4)"]
+      interval: 20s
+      timeout: 5s
+      retries: 5
+volumes:
+  db_data:
+  uploads:
