@@ -120,7 +120,10 @@ class FleetTests(TestCase):
     def test_upload_private_file_and_access(self):
         self.login_as(self.driver);r=self.upload();self.assertEqual(r.status_code,302)
         d=Document.objects.get();self.assertTrue(Path(d.file.path).is_file());self.assertNotIn('signed.pdf',d.file.name)
-        r=self.client.get(self.url('document_download',d.pk));self.assertEqual(r.status_code,200);self.assertIn('attachment',r['Content-Disposition']);r.close()
+        r=self.client.get(self.url('document_download',d.pk));self.assertEqual(r.status_code,200);self.assertIn('attachment',r['Content-Disposition'])
+        # Consume the test client's streaming wrapper so request cleanup keeps
+        # the enclosing TestCase transaction open on PostgreSQL.
+        self.assertTrue(b''.join(r.streaming_content).startswith(b'%PDF-'))
         self.login_as(self.other);self.assertEqual(self.client.get(self.url('document_download',d.pk)).status_code,404)
         self.client.logout();self.assertEqual(self.client.get(self.url('document_download',d.pk)).status_code,302)
         self.assertEqual(self.client.get('/private-media/'+d.file.name).status_code,404)
