@@ -14,7 +14,7 @@ from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 from django.utils import timezone
 from django.views.decorators.http import require_POST, require_GET
-from .models import User, Vehicle, Trip, Document, AuditEvent
+from .models import User, Vehicle, Trip, Document, AuditEvent, SavedPlace
 from .forms import TripForm, DocumentForm, AssignmentForm, AccountForm
 
 def staff_required(view):
@@ -76,7 +76,7 @@ def trip_create(request):
             return redirect("trip_detail",pk=trip.pk)
         except (IntegrityError,ValueError) as exc:
             form.add_error(None,str(exc) if isinstance(exc,ValueError) else "Авто або водій уже мають активний рейс. Оновіть сторінку.")
-    return render(request,"fleet/form.html",{"form":form,"title":"Новий рейс","submit":"Створити рейс"})
+    return render(request,"fleet/form.html",{"form":form,"title":"Новий рейс","submit":"Створити рейс","saved_places":SavedPlace.objects.filter(is_active=True)})
 
 @login_required
 def trip_detail(request,pk):

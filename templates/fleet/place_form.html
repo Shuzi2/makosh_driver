@@ -1,0 +1,4 @@
+{% extends 'base.html' %}{% block title %}МАКОШ · Збережене місце{% endblock %}{% block content %}
+{% include 'fleet/admin_nav.html' %}<div class="heading"><div><div class="eyebrow">АДМІН ПАНЕЛЬ / ДОВІДНИК</div><h1>{% if place %}Редагувати місце{% else %}Нове місце{% endif %}</h1><p class="muted">Зміна адреси в довіднику не змінює раніше створені рейси.</p></div></div>
+<section class="panel form-panel"><form method="post">{% csrf_token %}{{ form.as_p }}<div class="form-actions"><button class="btn primary" type="submit">Зберегти місце</button><a class="btn" href="{% url 'saved_places' %}">Скасувати</a></div></form><p class="hint">Щоб прибрати місце з підказок, вимкніть «Показувати у підказках рейсу». Запис залишиться в довіднику.</p></section>
+{% endblock %}

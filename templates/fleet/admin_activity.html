@@ -1,0 +1,4 @@
+{% extends 'base.html' %}{% block title %}МАКОШ · Журнал дій{% endblock %}{% block content %}
+{% include 'fleet/admin_nav.html' %}<div class="heading"><div><div class="eyebrow">АДМІН ПАНЕЛЬ / КОНТРОЛЬ</div><h1>Журнал дій</h1><p class="muted">100 останніх подій. Історія доступна лише для перегляду.</p></div></div>
+<section class="tablebox"><table><thead><tr><th>Час</th><th>Користувач</th><th>Дія</th><th>Подробиці</th></tr></thead><tbody>{% for event in events %}<tr><td>{{ event.created_at|date:'d.m.Y' }}<small>{{ event.created_at|date:'H:i:s' }}</small></td><td>{{ event.actor.full_name|default:'Система' }}</td><td><b>{{ event.action }}</b>{% if event.trip_id %}<small><a href="{% url 'trip_detail' event.trip_id %}">Рейс №{{ event.trip_id }} ↗</a></small>{% endif %}</td><td class="place-notes">{{ event.detail|default:'—' }}</td></tr>{% empty %}<tr><td colspan="4"><div class="empty">Подій ще немає.</div></td></tr>{% endfor %}</tbody></table></section>
+{% endblock %}

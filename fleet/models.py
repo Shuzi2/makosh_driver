@@ -134,6 +134,19 @@ class AuditEvent(models.Model):
     class Meta:
         ordering = ["-created_at"]
 
+class SavedPlace(models.Model):
+    name = models.CharField("Назва", max_length=120, unique=True)
+    address = models.CharField("Адреса", max_length=180)
+    notes = models.TextField("Примітка", blank=True, max_length=2000)
+    is_active = models.BooleanField("Показувати у підказках рейсу", default=True)
+
+    class Meta:
+        ordering = ["name", "id"]
+
+    def __str__(self):
+        return self.name
+
+
 class LoginThrottle(models.Model):
     key = models.CharField(max_length=64, unique=True)
     failures = models.PositiveIntegerField(default=0)

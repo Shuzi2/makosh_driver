@@ -6,7 +6,7 @@ from django import forms
 from django.conf import settings
 from django.contrib.auth.forms import AuthenticationForm
 from django.core.exceptions import ValidationError
-from .models import User, Trip, Document, normalize_phone
+from .models import User, Trip, Document, SavedPlace, normalize_phone
 
 class PhoneLoginForm(AuthenticationForm):
     username = forms.CharField(label="Телефон", widget=forms.TextInput(attrs={"autocomplete":"username", "inputmode":"tel", "placeholder":"+380…"}))
@@ -22,6 +22,8 @@ class TripForm(forms.ModelForm):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.fields["driver"].queryset = User.objects.filter(role="driver", is_active=True)
+        for field in ("origin", "destination"):
+            self.fields[field].widget.attrs["list"] = "saved-place-addresses"
     def clean(self):
         data = super().clean()
         vehicle, driver = data.get("vehicle"), data.get("driver")
@@ -70,3 +72,10 @@ class AccountForm(forms.ModelForm):
         model=User
         fields=["full_name","phone","role"]
     def clean_phone(self): return normalize_phone(self.cleaned_data["phone"])
+
+
+class SavedPlaceForm(forms.ModelForm):
+    class Meta:
+        model = SavedPlace
+        fields = ["name", "address", "notes", "is_active"]
+        widgets = {"notes": forms.Textarea(attrs={"rows": 3})}
