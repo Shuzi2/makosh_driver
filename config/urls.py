@@ -14,7 +14,9 @@ from fleet import waybills
 from fleet import driver_service
 from fleet import driver_reports, driver_report_export
 from fleet import push
+from fleet import test_trip_delete
 urlpatterns=[
+path('trips/<int:pk>/delete-test/',test_trip_delete.delete_test_trip,name='trip_delete_test'),
 path('service-worker.js',push.service_worker,name='driver_push_worker'),
 path('manifest.webmanifest',push.manifest,name='driver_push_manifest'),
 path('driver/push/config/',push.configuration,name='driver_push_config'),

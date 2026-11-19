@@ -344,6 +344,8 @@ def trip_detail(request,pk):
     route_data['driver_steps']=driver_stage_progress(trip,route_data.get('driver_simple_route',True))
     route_data['trip_live_version']=live_version
     route_data['driver_delays']=driver_delays
+    from .test_trip_delete import can_delete_test_trip
+    route_data['can_delete_test_trip']=can_delete_test_trip(request.user)
     from .dispatcher_stages import DispatcherStageForm
     route_data['dispatcher_stage_form']=DispatcherStageForm(trip=trip)
     document_stop=trip.stops.filter(pk=request.GET.get('document_stop')).first() if request.GET.get('document_stop','').isdigit() else trip.current_stop

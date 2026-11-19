@@ -1,0 +1,13 @@
+{% extends 'base.html' %}{% block content %}
+<div class="heading"><div><div class="eyebrow">ТІЛЬКИ ДЛЯ ВЛАСНИКА</div><h1>Видалити тестовий рейс №{{ trip.pk }}</h1><p>{{ trip.origin }} → {{ trip.destination }} · {{ trip.vehicle.plate }} · {{ trip.driver.full_name }}</p></div></div>
+<section class="panel">
+  <h2>Підтвердіть видалення</h2>
+  <p>Рейс буде видалено зі списків, звітів і шляхових листів разом із його документами та витратами. Дія незворотна. Раніше створені резервні копії не зміняться.</p>
+  <p>Пробіг буде віднято від одометра лише тоді, коли попереднє значення можна надійно визначити. Інакше показник потрібно перевірити вручну.</p>
+  <form method="post">{% csrf_token %}
+    <p><label><input type="checkbox" name="is_test" value="yes" required> Підтверджую, що цей рейс тестовий</label></p>
+    <p><label for="confirm">Введіть номер рейсу: <strong>{{ trip.pk }}</strong></label><input id="confirm" name="confirm" required autocomplete="off" inputmode="numeric"></p>
+    <p><label for="password">Ваш пароль для входу</label><input id="password" type="password" name="password" required autocomplete="current-password"></p>
+    <button class="btn primary" type="submit">Назавжди видалити рейс</button> <a class="btn" href="{% url 'trip_detail' trip.pk %}">Скасувати</a>
+  </form>
+</section>{% endblock %}
