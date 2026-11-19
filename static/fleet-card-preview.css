@@ -52,3 +52,15 @@
 #fleet-cards .fleet-vehicle .fleet-job-place b { color: #20242a; }
 #fleet-cards .fleet-vehicle .fleet-ttn-summary { border-color: #dce3e6; box-shadow: 0 2px 8px #20242a08; }
 #fleet-cards .fleet-vehicle .fleet-ttn-heading b { color: #253038; }
+
+/* The status stays visible while the trip's details can be folded away. */
+#fleet-cards .vehicle-trip-details { min-width: 0; }
+#fleet-cards .vehicle-trip-details > summary { display:flex; align-items:center; justify-content:space-between; gap:10px; min-height:44px; padding:9px 11px; border:1px solid #f0ded4; border-radius:10px; background:#fff7f2; color:#a63b0d; font-size:12px; font-weight:700; cursor:pointer; list-style:none; }
+#fleet-cards .vehicle-trip-details > summary::-webkit-details-marker { display:none; }
+#fleet-cards .vehicle-trip-details > summary:focus-visible { outline:3px solid #ef9b70; outline-offset:2px; }
+#fleet-cards .vehicle-trip-toggle { display:flex; align-items:center; gap:6px; color:#a5481f; font-size:11px; white-space:nowrap; }
+#fleet-cards .vehicle-trip-toggle::before { content:'Розгорнути'; }
+#fleet-cards .vehicle-trip-details[open] .vehicle-trip-toggle::before { content:'Згорнути'; }
+#fleet-cards .vehicle-trip-toggle::after { content:'⌄'; font-size:17px; line-height:1; }
+#fleet-cards .vehicle-trip-details[open] .vehicle-trip-toggle::after { transform:rotate(180deg); }
+#fleet-cards .vehicle-trip-details > .vehicle-job { margin-top:12px; }

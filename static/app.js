@@ -117,10 +117,16 @@ if (liveFleet) {
         const fragment=new DOMParser().parseFromString(data.cards,'text/html');
         const incoming=[...fragment.querySelectorAll('[data-vehicle-id]')];
         const existing=new Map([...liveFleet.querySelectorAll('[data-vehicle-id]')].map(card=>[card.dataset.vehicleId,card]));
+        // Preserve each trip's open state while fresh status and document data arrive.
+        incoming.forEach(card=>{
+          const oldDetails=existing.get(card.dataset.vehicleId)?.querySelector('.vehicle-trip-details');
+          const newDetails=card.querySelector('.vehicle-trip-details');
+          if(oldDetails && newDetails && oldDetails.dataset.tripId===newDetails.dataset.tripId) newDetails.open=oldDetails.open;
+        });
         const sameStructure=incoming.length===existing.size && incoming.every(card=>existing.has(card.dataset.vehicleId)) &&
           [...fragment.querySelectorAll('.fleet-group')].map(group=>[...group.querySelectorAll('[data-vehicle-id]')].map(card=>card.dataset.vehicleId).join(',')).join('|')===[...liveFleet.querySelectorAll('.fleet-group')].map(group=>[...group.querySelectorAll('[data-vehicle-id]')].map(card=>card.dataset.vehicleId).join(',')).join('|');
         const expandedCard=liveFleet.querySelector('.fleet-full-route[open]');
-        if (!sameStructure) {if(!expandedCard) liveFleet.innerHTML=data.cards;}
+        if (!sameStructure) {if(!expandedCard) liveFleet.innerHTML=fragment.body.innerHTML;}
         else incoming.forEach(card=>{
           const old=existing.get(card.dataset.vehicleId);
           if(!old||old.querySelector('.fleet-full-route[open]'))return;
