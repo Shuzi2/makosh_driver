@@ -396,7 +396,10 @@ def trip_edit(request,pk):
                     if changed:
                         edited.save(update_fields=changed+['updated_at'])
                         for field in changed: event(request.user,'Оновлено інформацію рейсу',trip,f'{form.fields[field].label}: {before[field]} → {getattr(edited,field)}')
-                    route_formset.save_route(edited,request.user)
+                    route_changes=route_formset.save_route(edited,request.user)
+                    if changed and not route_changes:
+                        from .push import queue_trip_change
+                        queue_trip_change(edited)
                     messages.success(request,'Маршрут і дані рейсу збережено. Водій побачить зміни автоматично.')
                     return redirect('trip_detail',pk=pk)
         else:
@@ -412,6 +415,8 @@ def trip_edit(request,pk):
                 if changed:
                     edited=form.save(commit=False)
                     edited.save(update_fields=changed+['updated_at'])
+                    from .push import queue_trip_change
+                    queue_trip_change(edited)
                     for field in changed:
                         old=str(before[field] if before[field] is not None else '') or '—'
                         new=str(form.cleaned_data[field] if form.cleaned_data[field] is not None else '') or '—'
@@ -478,6 +483,9 @@ def trip_status(request,pk):
         if target != previous: trip.status_changed_at=timezone.now()
         if target=="completed": trip.completed_at=timezone.now()
         trip.save()
+        if target=='cancelled':
+            from .push import enqueue
+            enqueue(trip.driver_id,'cancelled',trip)
         if target=='completed':
             from .driver_reports import snapshot_completion_rates
             snapshot_completion_rates(trip)

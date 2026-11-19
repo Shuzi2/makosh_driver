@@ -13,7 +13,13 @@ from fleet import driver_notifications
 from fleet import waybills
 from fleet import driver_service
 from fleet import driver_reports, driver_report_export
+from fleet import push
 urlpatterns=[
+path('service-worker.js',push.service_worker,name='driver_push_worker'),
+path('manifest.webmanifest',push.manifest,name='driver_push_manifest'),
+path('driver/push/config/',push.configuration,name='driver_push_config'),
+path('driver/push/subscribe/',push.subscribe,name='driver_push_subscribe'),
+path('driver/push/unsubscribe/',push.unsubscribe,name='driver_push_unsubscribe'),
 path('report/drivers/',driver_reports.overview,name='driver_reports'),
 path('report/drivers/defaults/',driver_reports.edit_defaults,name='driver_report_defaults'),
 path('report/drivers/<int:pk>/excel/',driver_report_export.export_driver,name='driver_report_export'),

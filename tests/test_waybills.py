@@ -19,7 +19,7 @@ class WaybillTests(TestCase):
         page=self.client.get(reverse('waybill_list'))
         self.assertContains(page,'WAY1234')
         response=self.client.get(reverse('waybill_detail',args=[self.trip.pk]))
-        self.assertContains(response,'ПОДОРОЖНІЙ ЛИСТ № 1')
+        self.assertContains(response,f'ПОДОРОЖНІЙ ЛИСТ № {self.trip.pk}')
         self.assertContains(response,'ТОВ «Макош Мінерал»')
         self.assertContains(response,'SCANIA')
         self.assertContains(response,'м. Житомир')

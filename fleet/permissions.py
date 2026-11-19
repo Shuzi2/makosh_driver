@@ -66,7 +66,7 @@ class DriverPermissionMiddleware:
             return None
         if request.user.role == 'moderator':
             name = request.resolver_match.url_name
-            if name in ('logout', 'password_change'):
+            if name in ('logout', 'password_change', 'driver_push_worker', 'driver_push_manifest'):
                 return None
             pair = MODERATOR_ROUTES.get(name)
             if not pair:

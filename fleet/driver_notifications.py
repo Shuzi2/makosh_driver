@@ -8,6 +8,8 @@ from .models import DriverAssignmentNotification, DriverServiceNotification, Tri
 
 def notify_assignment(trip):
     DriverAssignmentNotification.objects.create(recipient_id=trip.driver_id,trip=trip)
+    from .push import enqueue
+    enqueue(trip.driver_id,'assignment',trip)
 
 def resolve_assignment(trip,driver_id=None):
     DriverAssignmentNotification.objects.filter(trip=trip,recipient_id=driver_id or trip.driver_id,resolved_at__isnull=True).update(resolved_at=timezone.now())

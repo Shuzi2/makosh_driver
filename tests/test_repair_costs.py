@@ -1,12 +1,12 @@
 from decimal import Decimal
 import tempfile
 from django.core.files.uploadedfile import SimpleUploadedFile
-from django.test import TestCase, override_settings
+from django.test import TransactionTestCase, override_settings
 from django.urls import reverse
 from fleet.models import User, Vehicle, VehicleRepair
 
 @override_settings(SECURE_SSL_REDIRECT=False, SESSION_COOKIE_SECURE=False, CSRF_COOKIE_SECURE=False, STORAGES={'default': {'BACKEND': 'django.core.files.storage.FileSystemStorage'}, 'staticfiles': {'BACKEND': 'django.contrib.staticfiles.storage.StaticFilesStorage'}})
-class RepairCostTests(TestCase):
+class RepairCostTests(TransactionTestCase):
     def setUp(self):
         media = tempfile.TemporaryDirectory()
         self.addCleanup(media.cleanup)

@@ -93,6 +93,8 @@ def quick_edit(request,pk,key):
                 if changed:
                     edited=form.save(commit=False)
                     edited.save(update_fields=changed+['updated_at'])
+                    from .push import queue_trip_change
+                    queue_trip_change(edited)
                     for field in changed:
                         old=str(before[field] if before[field] is not None else '') or 'не вказано'
                         new=str(form.cleaned_data[field] if form.cleaned_data[field] is not None else '') or 'не вказано'

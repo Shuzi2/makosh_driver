@@ -139,6 +139,8 @@ def manager_service_update(request,pk):
                 notice_parts.append('Відповідь: '+note)
             if notice_parts:
                 DriverServiceNotification.objects.create(recipient=item.driver,service_request=item,message=' · '.join(notice_parts)[:1000])
+                from .push import queue_service_reply
+                queue_service_reply(item.driver_id)
             if previous!=item.get_status_display() or old_note!=note:
                 AuditEvent.objects.create(actor=request.user,action='Оновлено сервісний запис водія',detail=f'Запис №{item.pk}, {item.tractor_plate}: {previous} → {item.get_status_display()}; відповідь: {old_note or "—"} → {note or "—"}'[:1500])
             messages.success(request,'Сервісний запис оновлено. Водій побачить стан і відповідь.')

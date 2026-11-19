@@ -604,6 +604,29 @@ class DriverServiceNotification(models.Model):
         ordering=['-created_at','-pk']
 
 
+class PushSubscription(models.Model):
+    user=models.ForeignKey(settings.AUTH_USER_MODEL,on_delete=models.CASCADE,related_name='push_subscriptions')
+    endpoint=models.CharField(max_length=2048,unique=True)
+    p256dh=models.CharField(max_length=128)
+    auth=models.CharField(max_length=64)
+    created_at=models.DateTimeField(default=timezone.now)
+    updated_at=models.DateTimeField(auto_now=True)
+
+
+class PushDelivery(models.Model):
+    subscription=models.ForeignKey(PushSubscription,on_delete=models.CASCADE,related_name='deliveries')
+    recipient=models.ForeignKey(settings.AUTH_USER_MODEL,on_delete=models.CASCADE,related_name='+')
+    trip=models.ForeignKey(Trip,null=True,blank=True,on_delete=models.CASCADE,related_name='+')
+    kind=models.CharField(max_length=20)
+    status=models.CharField(max_length=12,default='pending',db_index=True)
+    attempts=models.PositiveSmallIntegerField(default=0)
+    created_at=models.DateTimeField(default=timezone.now)
+    next_attempt_at=models.DateTimeField(default=timezone.now)
+    claimed_at=models.DateTimeField(null=True,blank=True)
+    class Meta:
+        ordering=['created_at','pk']
+
+
 class TtnNotification(models.Model):
     recipient = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='ttn_notifications')
     document = models.ForeignKey(Document, on_delete=models.CASCADE, related_name='notifications')
