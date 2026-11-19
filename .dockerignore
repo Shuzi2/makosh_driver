@@ -5,6 +5,8 @@
 private
 private-media
 backups
+Makosh_Fleet_Initial_Data.csv
+backups
 *.sqlite3
 *.sqlite3-*
 staticfiles

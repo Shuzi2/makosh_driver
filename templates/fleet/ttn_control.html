@@ -1,0 +1,19 @@
+<div class="panel ttn-control" id="ttn-controls">
+  <h2>Контроль ТТН</h2>
+  {% if trip.route_enabled %}
+    <p class="hint">Документи для кожної точки маршруту.</p>
+    <div class="ttn-control-points">
+      {% for point in route_stops %}{% if point.state != 'cancelled' %}
+      <section class="ttn-control-point">
+        <div class="ttn-control-point-heading"><strong>{% if point.kind == 'load' %}ТТН завантаження{% else %}Підписана ТТН розвантаження{% endif %}</strong><span class="fleet-ttn-state {% if point.ttn_complete %}is-complete{% elif point.ttn_has_file %}is-partial{% else %}is-missing{% endif %}">{% if point.ttn_complete %}Завантажено{% elif point.ttn_has_file %}Частково{% else %}Не завантажено{% endif %}</span></div>
+        <p class="ttn-control-address">{{ point.address }}</p>
+        <a class="btn ttn-control-upload" href="{% url 'trip_detail' trip.pk %}?document_stop={{ point.pk }}#ttn-upload">＋ {% if point.kind == 'load' %}Додати ТТН завантаження{% else %}Додати підписану ТТН{% endif %}</a>
+      </section>
+      {% endif %}{% endfor %}
+    </div>
+  {% else %}
+    {% for item in trip_ttn_summary %}<div class="trip-ttn-list-row"><span>{{ item.label }}</span> <strong class="fleet-ttn-state is-{{ item.state }}">{{ item.text }}</strong></div>{% endfor %}
+    <a class="btn" href="#ttn-upload">＋ Додати ТТН</a>
+  {% endif %}
+</div>
+{% if user.manages_fleet and trip.is_accepted and trip.acceptance_location %}<section class="panel"><h2>Місце водія при прийнятті</h2><p>{{ trip.acceptance_location }}</p><p class="hint">Вказано {{ trip.accepted_at|date:'d.m.Y H:i' }}. Місце може змінитися до початку рейсу.</p></section>{% endif %}

@@ -1,0 +1,4 @@
+{% extends 'fleet/workspace.html' %}{% block content %}
+<div class="heading"><div><h1>Додати причіп</h1><p>Новий причіп з’явиться у списку вільних.</p></div><a class="btn" href="{% if vehicle_id %}{% url 'vehicle_trailer_change' vehicle_id %}{% else %}{% url 'dashboard' %}{% endif %}">← Назад</a></div>
+<form method="post" class="panel form-panel">{% csrf_token %}<input type="hidden" name="vehicle" value="{{ vehicle_id }}">{{ form.non_field_errors }}{% include 'fleet/trip_field.html' with field=form.plate %}{% include 'fleet/trip_field.html' with field=form.kind %}<p class="hint">Після додавання його можна закріпити за вільним тягачем.</p><button class="btn primary" type="submit">Додати причіп</button></form>
+{% endblock %}

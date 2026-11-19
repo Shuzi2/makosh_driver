@@ -1,0 +1,21 @@
+{% extends 'fleet/admin_base.html' %}{% load static l10n %}{% block admin_content %}
+<div class="admin-grid">
+<section class="panel"><div class="eyebrow">ФОНОВЕ ОБСЛУГОВУВАННЯ</div><h2>{{ worker_label }}</h2><p>{% if worker_healthy %}Виконавець надсилає сигнал і обробляє чергу.{% else %}Автоматичні завдання можуть не виконуватися. Перевірте, чи запущено фонове обслуговування Docker.{% endif %}</p><p class="muted">Останній сигнал: {{ settings.worker_seen_at|date:'d.m.Y H:i'|default:'ще не надходив' }}</p></section>
+<section class="panel"><div class="eyebrow">ОСТАННЯ УСПІШНА КОПІЯ</div><h2>{% if last_backup %}{{ last_backup.finished_at|date:'d.m.Y H:i' }}{% else %}Ще немає{% endif %}</h2><p>База даних, завантажені файли та контрольні суми в одному архіві.</p><a href="{% url 'admin_maintenance' %}">Налаштувати та створити копію →</a></section>
+</div>
+<section class="panel admin-section"><div class="eyebrow">ЩОТИЖНЕВА ПЕРЕВІРКА ВІДНОВЛЕННЯ</div><h2>{% if last_restore_test %}{{ last_restore_test.get_status_display }}{% else %}Ще не виконувалась{% endif %}</h2><p>Щонеділі після часу резервування остання доступна копія перевіряється в окремій тимчасовій базі. Контрольні суми та наявність документів перевіряються автоматично.</p>{% if last_restore_test %}<p>{{ last_restore_test.finished_at|date:'d.m.Y H:i'|default:'Очікує завершення' }} — {{ last_restore_test.message }}</p>{% endif %}</section>
+<section class="panel admin-section resource-panel" data-resource-url="{% url 'admin_metrics_data' %}">
+<div class="resource-heading"><div><h2>Навантаження середовища</h2><p class="muted">{{ metrics.scope }}</p></div><span class="resource-status" data-resource-status>Оновлюється кожні 3 с</span></div>
+<dl class="admin-metrics resource-grid">{% for metric in metrics.rows %}<div class="resource-card" data-resource-key="{{ metric.key }}">
+<dt><span class="resource-icon"><img alt="" src="{% if metric.key == 'disk' %}{% static 'cargo-icons/archive.svg' %}{% elif metric.key == 'memory' %}{% static 'cargo-icons/shield.svg' %}{% elif metric.key == 'network' %}{% static 'cargo-icons/route.svg' %}{% else %}{% static 'cargo-icons/server.svg' %}{% endif %}"></span>{{ metric.label }}</dt>
+<dd data-resource-value>{{ metric.value|default_if_none:'Недоступно' }}</dd>
+<progress class="resource-progress" data-resource-progress max="100" value="{{ metric.percent|unlocalize }}" aria-label="{{ metric.label }}, відсоток використання" {% if metric.percent == None %}hidden{% endif %}></progress>
+<p class="hint" data-resource-hint>{{ metric.hint }}</p></div>{% empty %}<div><dt>Метрики</dt><dd>Недоступно в цьому середовищі</dd></div>{% endfor %}</dl></section>
+<section class="panel admin-section"><h2>Історія технічних вимірювань</h2><p class="muted">Приблизно кожні 5 хвилин; історія очищається за налаштуванням технічного обслуговування. Раніші виміри процесора і пам’яті стосуються контейнера обслуговування, новіші — середовища Docker. Мережа вимірюється в контейнері, який виконав запис.</p>{% for sample in metric_samples %}<div><strong>{{ sample.sampled_at|date:'d.m.Y H:i' }}</strong> {% for metric in sample.rows %} · {{ metric.label }}: {{ metric.value }}{% endfor %}</div>{% empty %}<p>Вимірювань ще немає.</p>{% endfor %}</section>
+<script src="{% static 'resource_metrics.js' %}" defer></script>
+<section class="admin-section"><div class="section-head"><h2>Останні операції</h2><a href="{% url 'admin_maintenance' %}">Уся історія →</a></div>{% include 'fleet/admin_jobs.html' %}</section>
+{% endblock %}
+
+
+
+

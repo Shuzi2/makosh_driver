@@ -1,0 +1,39 @@
+.fleet-workspace .service-overview{margin:22px 0;padding:24px;border:1px solid #dfe4e8;border-radius:16px;background:#fff}
+.fleet-workspace .service-overview-head,.fleet-workspace .service-overview-title,.fleet-workspace .service-vehicle-head,.fleet-workspace .service-vehicle-footer{display:flex;align-items:center;justify-content:space-between;gap:16px}
+.fleet-workspace .service-overview-title{justify-content:flex-start;align-items:flex-start}
+.fleet-workspace .service-overview h2{font-size:20px;line-height:1.3;margin:0 0 5px;color:#20242a}
+.fleet-workspace .service-overview-head p,.fleet-workspace .service-overview-note{font-size:12px;color:#66747d;line-height:1.55;margin:0}
+.fleet-workspace .service-icon{width:42px;height:42px;display:grid;place-items:center;flex:none;border-radius:12px;background:#fff0e7}
+.fleet-workspace .service-icon img{width:20px;height:20px}
+.fleet-workspace .service-overview-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,330px),1fr));gap:12px;margin-top:20px}
+.fleet-workspace .service-vehicle{border:1px solid #e3e7ea;border-radius:13px;background:#fbfcfc;padding:16px;min-width:0;transition:border-color .18s ease,box-shadow .18s ease}
+.fleet-workspace .service-vehicle:hover{border-color:#ecc2ab;box-shadow:0 5px 17px #20242a0c}
+.fleet-workspace .service-vehicle-head{align-items:flex-start;margin-bottom:14px}
+.fleet-workspace .service-vehicle-head strong{display:block;font-size:17px;color:#20242a;letter-spacing:.02em}
+.fleet-workspace .service-vehicle-head small,.fleet-workspace .service-vehicle-footer small{display:block;font-size:11px;color:#6a7881;margin-top:3px}
+.fleet-workspace .service-vehicle-repair{font-size:11px;color:#a54339;background:#fbecea;padding:5px 8px;border-radius:9px;white-space:nowrap}
+.fleet-workspace .service-dates{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+.fleet-workspace .service-deadline,.fleet-workspace .service-no-plan{display:flex;flex-direction:column;gap:5px;min-width:0;padding:12px;border:1px solid #e5e8ea;border-radius:10px;background:#fff}
+.fleet-workspace .service-deadline small{font-size:11px;color:#66747d}
+.fleet-workspace .service-deadline strong,.fleet-workspace .service-no-plan strong{font-size:14px;color:#253038;overflow-wrap:anywhere}
+.fleet-workspace .service-deadline span,.fleet-workspace .service-no-plan span{font-size:11px;line-height:1.45;color:#687780;overflow-wrap:anywhere}
+.fleet-workspace .service-deadline .deadline-state{color:#91512e;font-weight:700}
+.fleet-workspace .service-deadline a,.fleet-workspace .service-no-plan a,.fleet-workspace .service-vehicle-footer a{color:#b84010;font-size:11px;font-weight:700;text-decoration:none}
+.fleet-workspace .service-no-plan{background:#fff8f3;border-color:#f3e0d4}
+.fleet-workspace .service-no-plan a{margin-top:3px}
+.fleet-workspace .service-vehicle-footer{align-items:flex-end;border-top:1px solid #e7ebed;margin-top:13px;padding-top:12px;font-size:11px;color:#687780}
+.fleet-workspace .service-vehicle-footer b{color:#34424a}
+.fleet-workspace .service-overview-note{margin-top:16px}
+.fleet-workspace .service-no-vehicles{color:#687780}
+.fleet-workspace .service-overview a:focus-visible{outline:3px solid #d9460e;outline-offset:3px}
+.fleet-workspace .repair-overview{border-radius:16px;border-color:#e1e5e8}
+.fleet-workspace .repair-overview-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,330px),1fr));gap:12px}
+.fleet-workspace .repair-overview-card{border-radius:12px;padding:16px;background:#fff9f7;border:1px solid #f2d7cd}
+.fleet-workspace .repair-overview-card strong{font-size:17px;color:#20242a}
+.fleet-workspace .repair-overview-card p{font-size:13px;line-height:1.5;color:#39464e}
+.fleet-workspace .repair-overview-card small{color:#687780}
+.fleet-workspace :is(.repair-history,.maintenance-history){border-radius:14px}
+.fleet-workspace :is(.repair-history,.maintenance-history)>summary{cursor:pointer;min-height:44px;display:flex;align-items:center;font-weight:700;gap:9px}
+@media(max-width:600px){.fleet-workspace .service-overview{padding:17px}.fleet-workspace .service-overview-head{align-items:flex-start;flex-direction:column}.fleet-workspace .service-overview-head>.btn{width:100%;justify-content:center}.fleet-workspace .service-overview h2{font-size:18px}}
+@media(max-width:360px){.fleet-workspace .service-dates{grid-template-columns:1fr}}
+@media(prefers-reduced-motion:reduce){.fleet-workspace .service-vehicle{transition:none}}

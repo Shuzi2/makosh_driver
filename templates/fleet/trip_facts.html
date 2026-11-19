@@ -1,0 +1,4 @@
+{% extends 'fleet/workspace.html' %}{% block content %}
+<div class="heading"><div><h1>Дані рейсу №{{ trip.pk }}</h1><p>{{ trip.origin }} → {{ trip.destination }}</p></div><a class="btn" href="{% url 'trip_detail' trip.pk %}">← До рейсу</a></div>
+<section class="panel"><h2>Вага, пробіг і номер ТТН</h2><p class="hint">Дані зберігаються окремо від етапу рейсу. Виправлення залишаються в історії.</p><form class="trip-facts-form" method="post">{% csrf_token %}{% include 'fleet/trip_facts_fields.html' %}{% if facts_form.non_field_errors %}<a class="btn" href="{% url 'trip_facts' trip.pk %}">Відкрити актуальні дані</a>{% endif %}</form></section>
+{% endblock %}

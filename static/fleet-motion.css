@@ -1,0 +1,14 @@
+.fleet-workspace .fleet-motion{position:absolute;inset:0;pointer-events:none;perspective:800px;overflow:hidden}
+.fleet-workspace .fleet-motion-truck.fleet-real-wheel{display:none}
+.fleet-workspace .fleet-motion-halo{position:absolute;inset:7% 7% 0;border-radius:50%;background:radial-gradient(ellipse,#fff3e9 0,#f8f9fb99 46%,transparent 73%)}
+.fleet-workspace .fleet-motion-orbit{position:absolute;left:50%;top:48%;border:1px solid #e7ded8;border-radius:50%;transform:translate(-50%,-50%) rotate(-8deg);opacity:.72}
+.fleet-workspace .fleet-motion-orbit-one{width:83%;height:57%;animation:fleet-orbit 12s ease-in-out infinite alternate}
+.fleet-workspace .fleet-motion-orbit-two{width:72%;height:43%;border-color:#e0e6ea;transform:translate(-50%,-50%) rotate(10deg);animation:fleet-orbit-two 15s ease-in-out infinite alternate}
+.fleet-workspace .fleet-motion-truck{position:absolute;z-index:2;display:block;left:5%;top:3%;width:90%;height:86%;object-fit:contain;filter:drop-shadow(0 8px 8px #1d28301c);transform-origin:50% 70%;animation:fleet-float 7s cubic-bezier(.45,0,.55,1) infinite}
+.fleet-workspace .fleet-motion-road{position:absolute;z-index:1;left:5%;bottom:1%;width:90%;height:25%}
+.fleet-workspace .fleet-motion-path{animation:fleet-road 3s linear infinite}
+@keyframes fleet-road{to{stroke-dashoffset:24}}
+@keyframes fleet-float{0%,100%{transform:translate3d(-5px,0,0) rotate(-.7deg)}50%{transform:translate3d(5px,-4px,0) rotate(.7deg)}}
+@keyframes fleet-orbit{from{transform:translate(-50%,-50%) rotate(-8deg)}to{transform:translate(-50%,-50%) rotate(7deg)}}
+@keyframes fleet-orbit-two{from{transform:translate(-50%,-50%) rotate(10deg)}to{transform:translate(-50%,-50%) rotate(-5deg)}}
+@media(prefers-reduced-motion:reduce){.fleet-workspace :is(.fleet-motion-path,.fleet-motion-truck,.fleet-motion-orbit){animation:none}}

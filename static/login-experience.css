@@ -1,0 +1,54 @@
+/* M TRUCK login: the scene and form remain independently accessible. */
+.fleet-workspace.login-screen .public { padding: 0 16px 24px; }
+.fleet-workspace.login-screen .login-fleet-showcase { height: clamp(230px, 44vh, 460px); }
+.fleet-workspace.login-screen .login-fleet-vehicle { width: min(46vw, 730px); }
+.fleet-workspace.login-screen .login-fleet-showcase:before { inset: -8% -7% 28%; animation-duration: 65s; }
+.fleet-workspace.login-screen .login-road { height: 43%; }
+.fleet-workspace.login-screen .login-road-lines { animation-duration: 2.7s; }
+.fleet-workspace.login-screen .login-route-art { top: clamp(230px, 44vh, 460px); }
+.fleet-workspace.login-screen .public .login {
+  position: relative; width: min(100%, 460px); margin-top: -20px; padding: 28px 32px 24px;
+  border: 1px solid rgba(255,255,255,.85); border-radius: 22px;
+  background: rgba(255,255,255,.97); box-shadow: 0 24px 70px rgba(35,43,52,.14), 0 4px 14px rgba(35,43,52,.05);
+  animation: login-card-arrive .65s cubic-bezier(.2,.7,.2,1) both;
+}
+.fleet-workspace.login-screen .public .login:focus-within { border-color: #ffd3bf; box-shadow: 0 25px 72px rgba(35,43,52,.15), 0 0 0 3px rgba(255,81,18,.07); }
+.fleet-workspace.login-screen .login-identity { gap: 12px; }
+.fleet-workspace.login-screen .public .login h1 { color:#20242a; font-size: 26px; letter-spacing: -.8px; margin: 17px 0 4px; }
+.fleet-workspace.login-screen .public .login .muted { color:#677781; font-size:13px; margin-bottom: 18px; }
+.fleet-workspace.login-screen .public .login form p { margin-bottom: 12px; }
+.fleet-workspace.login-screen .public .login label { color:#394854; font-weight:700; font-size:12px; margin-bottom:6px; }
+.fleet-workspace.login-screen .public .login input:not([type=hidden]) { min-height: 48px; padding: 11px 14px; border-radius:10px; border:1px solid #d8dfe4; background:#f8fafb; transition:background-color .2s ease,border-color .2s ease,box-shadow .2s ease; }
+.fleet-workspace.login-screen .public .login input:not([type=hidden]):hover { border-color:#b8c3ca; }
+.fleet-workspace.login-screen .public .login input:not([type=hidden]):focus { outline:none; background:#fff; border-color:#f47746; box-shadow:0 0 0 4px #ff51121c; }
+.fleet-workspace.login-screen .public .login .btn.primary { min-height:48px; margin-top:5px; border-radius:10px; font-size:14px; font-weight:800; color:#171717; background:#ff5112; box-shadow:0 6px 16px #e84c1929; transition:transform .18s ease,box-shadow .18s ease,filter .18s ease; }
+.fleet-workspace.login-screen .public .login .btn.primary:hover { transform:translateY(-2px); filter:brightness(1.04); box-shadow:0 10px 20px #e84c1938; }
+.fleet-workspace.login-screen .public .login .btn.primary:active { transform:translateY(0); }
+.fleet-workspace.login-screen .public .login .btn.primary:focus-visible { outline:3px solid #77310f; outline-offset:3px; }
+.fleet-workspace.login-screen .public .login .hint { color:#71808a; font-size:11px; line-height:1.55; margin-top:15px; padding-top:13px; border-top:1px solid #eef0f1; }
+.login-route-art .route-nodes { animation: login-node-glow 5s ease-in-out infinite; }
+@keyframes login-card-arrive { from { opacity:0; transform:translateY(12px); } to { opacity:1; transform:translateY(0); } }
+@keyframes login-node-glow { 0%,100% { opacity:.48; } 50% { opacity:.85; } }
+@media (max-width:600px) {
+  .fleet-workspace.login-screen .public { padding:0 14px 20px; }
+  .fleet-workspace.login-screen .login-fleet-showcase { height:clamp(150px, 27vh, 220px); }
+  .fleet-workspace.login-screen .login-fleet-vehicle { width:50vw; }
+  .fleet-workspace.login-screen .login-route-art { top:clamp(150px, 27vh, 220px); }
+  .fleet-workspace.login-screen .public .login { margin-top:-12px; padding:22px 22px 19px; }
+  .fleet-workspace.login-screen .public .login h1 { font-size:23px; margin-top:12px; }
+  .fleet-workspace.login-screen .public .login .muted { margin-bottom:14px; }
+  .fleet-workspace.login-screen .public .login input:not([type=hidden]) { font-size:16px; }
+}
+@media (max-height:700px) {
+  .fleet-workspace.login-screen .login-fleet-showcase { height:clamp(105px, 25vh, 175px); }
+  .fleet-workspace.login-screen .login-route-art { top:clamp(105px, 25vh, 175px); }
+  .fleet-workspace.login-screen .public .login { margin-top:-8px; padding-top:15px; padding-bottom:15px; }
+  .fleet-workspace.login-screen .public .login h1 { margin-top:8px; }
+  .fleet-workspace.login-screen .public .login .muted { margin-bottom:8px; }
+  .fleet-workspace.login-screen .public .login input:not([type=hidden]), .fleet-workspace.login-screen .public .login .btn.primary { min-height:42px; }
+  .fleet-workspace.login-screen .public .login .hint { margin-top:8px; padding-top:8px; }
+}
+@media (prefers-reduced-motion:reduce) {
+  .fleet-workspace.login-screen .public .login, .login-route-art .route-nodes { animation:none; }
+  .fleet-workspace.login-screen .public .login input:not([type=hidden]), .fleet-workspace.login-screen .public .login .btn.primary { transition:none; }
+}

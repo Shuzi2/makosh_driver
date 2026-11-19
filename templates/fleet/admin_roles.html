@@ -1,0 +1,27 @@
+{% extends 'fleet/admin_base.html' %}{% load static %}{% block admin_content %}
+<section class="panel roles-panel">
+  <div class="roles-heading">
+    <div class="roles-heading-icon"><img src="{% static 'cargo-icons/shield.svg' %}" alt=""></div>
+    <div><h2>Ролі й права</h2><p>Керуйте можливостями водіїв. Зміни почнуть діяти після збереження.</p></div>
+  </div>
+  <div class="roles-intro"><span class="roles-intro-icon" aria-hidden="true">✓</span><div><strong>Адміністратор має всі права</strong><p>Водій працює лише з власними даними. Перегляд рейсів потрібен для роботи з їхніми етапами та документами.</p></div></div>
+  <form method="post" action="{% url 'admin_permission_update' %}">{% csrf_token %}
+    <div class="permissions-head"><div><h3>Доступ водія</h3><p>Оберіть дозволені можливості для всіх водіїв</p></div><span class="roles-label">НАЛАШТУВАННЯ РОЛІ</span></div>
+    <div class="permissions-list">
+      {% for key, label, enabled in permission_rows %}
+      <div class="permission-row">
+        <span class="permission-icon"><img alt="" src="{% if key == 'view_trips' %}{% static 'cargo-icons/route.svg' %}{% elif key == 'change_stages' %}{% static 'cargo-icons/history.svg' %}{% else %}{% static 'cargo-icons/audit.svg' %}{% endif %}"></span>
+        <div class="permission-copy"><strong>{{ label }}</strong><span>{% if key == 'view_trips' %}Власні рейси та їхні деталі{% elif key == 'change_stages' %}Оновлення виконання власного рейсу{% elif key == 'upload_documents' %}Робота з документами власних рейсів{% elif key == 'report_delays' %}Повідомлення логістів про затримки{% else %}Додавання витрат та чеків до власних рейсів{% endif %}</span></div>
+        <label class="permission-toggle" for="permission-{{ key }}"><input id="permission-{{ key }}" type="checkbox" name="{{ key }}" {% if enabled %}checked{% endif %} aria-label="{{ label }}"><span class="permission-state"><span class="permission-on">Дозволено</span><span class="permission-off">Вимкнено</span></span><span class="permission-track" aria-hidden="true"></span></label>
+      </div>
+      {% endfor %}
+      <div class="permission-row"><span class="permission-icon"><img alt="" src="{% static 'cargo-icons/users.svg' %}"></span><div class="permission-copy"><strong>Користувачі, ролі, журнал і резервування</strong><span>Адміністративні функції системи</span></div><span class="permission-fixed restricted">Немає доступу</span></div>
+      <div class="permission-row"><span class="permission-icon"><img alt="" src="{% static 'cargo-icons/shield.svg' %}"></span><div class="permission-copy"><strong>Зміна власного пароля</strong><span>Доступна кожному користувачу</span></div><span class="permission-fixed allowed">Доступно</span></div>
+    </div>
+    <div class="roles-footer"><p>Налаштування застосовуються до всіх водіїв.</p><button class="btn primary" type="submit">Зберегти права</button></div>
+  </form>
+</section>
+<section class="panel admin-section roles-panel"><div class="roles-heading"><div class="roles-heading-icon"><img src="{% static 'cargo-icons/shield.svg' %}" alt=""></div><div><h2>Доступ модератора</h2><p>Налаштування діють для всіх модераторів. Адміністрування користувачів і резервних копій їм недоступне.</p></div></div>
+<form method="post" action="{% url 'admin_moderator_permissions_update' %}">{% csrf_token %}<div class="permissions-list moderator-permissions">{% for key,label,enabled in moderator_rows %}<div class="permission-row"><span class="permission-icon"><img src="{% static 'cargo-icons/shield.svg' %}" alt=""></span><div class="permission-copy"><strong>{{ label }}</strong></div><label class="permission-toggle" for="moderator-{{ key }}"><input type="checkbox" id="moderator-{{ key }}" name="{{ key }}" aria-label="{{ label }}" {% if enabled %}checked{% endif %}><span class="permission-state"><span class="permission-on">Дозволено</span><span class="permission-off">Вимкнено</span></span><span class="permission-track" aria-hidden="true"></span></label></div>{% endfor %}</div><div class="roles-footer"><p>Для змін необхідний відповідний дозвіл на перегляд.</p><button class="btn primary">Зберегти права модератора</button></div></form></section>
+<p class="roles-manage-link">Щоб змінити роль конкретної людини, відкрийте її картку в розділі <a href="{% url 'accounts' %}">«Користувачі та авто»</a>.</p>
+{% endblock %}

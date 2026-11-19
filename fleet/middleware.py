@@ -1,4 +1,18 @@
 from django.shortcuts import redirect
+from django.conf import settings
+from urllib.parse import urlsplit
+
+class LanSecureCookieMiddleware:
+    """Mark HTTPS session/CSRF cookies secure while keeping localhost HTTP usable."""
+    def __init__(self, get_response): self.get_response = get_response
+    def __call__(self, request):
+        response = self.get_response(request)
+        if request.is_secure():
+            for name in (settings.SESSION_COOKIE_NAME, settings.CSRF_COOKIE_NAME):
+                if name in response.cookies:
+                    response.cookies[name]['secure'] = True
+        return response
+
 class PasswordChangeMiddleware:
     def __init__(self, get_response): self.get_response = get_response
     def __call__(self, request):
@@ -7,5 +21,16 @@ class PasswordChangeMiddleware:
         response = self.get_response(request)
         if request.user.is_authenticated and "Cache-Control" not in response:
             response["Cache-Control"] = "private, no-store"
-        response["Content-Security-Policy"] = "default-src 'self'; img-src 'self' data:; style-src 'self'; script-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'; object-src 'none'"
+        tiles=urlsplit(settings.MAP_TILE_URL)
+        tile_origin=f'https://{tiles.hostname}'+(f':{tiles.port}' if tiles.port else '') if tiles.scheme=='https' and tiles.hostname else ''
+        if 'Content-Security-Policy' not in response:
+            response["Content-Security-Policy"] = f"default-src 'self'; img-src 'self' data: blob: {tile_origin}; style-src 'self'; script-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'; object-src 'none'"
         return response
+
+class SessionActivityMiddleware:
+    def __init__(self, get_response): self.get_response = get_response
+    def __call__(self, request):
+        if request.user.is_authenticated:
+            from .session_activity import observe
+            observe(request)
+        return self.get_response(request)

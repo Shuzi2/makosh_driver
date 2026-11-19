@@ -1,0 +1,73 @@
+/* Shared finishing touches for M TRUCK's existing work surfaces. */
+.fleet-workspace:not(.driver-mode) .btn{border-radius:9px;transition:background-color .18s ease,border-color .18s ease,box-shadow .18s ease}
+.fleet-workspace:not(.driver-mode) .btn:not(.primary):not(.danger){background:#fff;border-color:#d9dde3;color:#424b54}
+.fleet-workspace:not(.driver-mode) .btn:not(.primary):not(.danger):hover{background:#fff8f4;border-color:#edc7b4;color:#a8380d}
+.fleet-workspace:not(.driver-mode) :is(input:not([type=checkbox]):not([type=radio]):not([type=range]):not([type=file]),select,textarea){border-radius:9px;transition:border-color .18s ease,box-shadow .18s ease}
+.fleet-workspace:not(.driver-mode) :is(input:not([type=checkbox]):not([type=radio]):not([type=range]):not([type=file]),select,textarea):focus-visible{outline:2px solid #e64a0e;outline-offset:2px;border-color:#e88860}
+.fleet-workspace .badge{font-weight:700;letter-spacing:.01em}
+.fleet-workspace .badge:is(.free,.completed){background:#e6f5ec;color:#166c47}
+.fleet-workspace .badge:is(.loading,.unloading,.road){background:#fff0db;color:#87501b}
+.fleet-workspace .badge:is(.planned,.queued){background:#eef1f5;color:#4f5e70}
+.fleet-workspace .badge.cancelled{background:#fbe9e6;color:#9c4234}
+.fleet-workspace .fleet-vehicle{border-radius:15px;transition:border-color .22s ease,box-shadow .22s ease}
+.fleet-workspace .fleet-vehicle:hover{border-color:#e3c5b5;box-shadow:0 6px 20px rgba(57,40,30,.09)}
+.fleet-workspace .vehicle-pair b{color:#26313b;letter-spacing:.025em}
+.fleet-workspace .vehicle-facts dd{font-weight:700}
+.fleet-workspace :is(.tablebox,.accounts-table){border-radius:13px;overflow:auto}
+.fleet-workspace .tablebox th{font-weight:700;letter-spacing:.01em}
+.fleet-workspace .tablebox tbody tr{transition:background-color .16s ease}
+.fleet-workspace .tablebox tbody tr:hover{background:#fff9f5}
+.fleet-workspace td.empty{padding:28px 16px;text-align:center;color:#6d7781}
+.fleet-workspace td.empty::before{content:'◇';display:block;color:#df946f;font-size:22px;line-height:1;margin-bottom:8px}
+.fleet-workspace :is(.vehicle-menu[open] .vehicle-menu-panel,dialog[open],details[open] > :not(summary)){animation:workspace-appear .2s ease-out both}
+@keyframes workspace-appear{from{opacity:0;transform:translateY(-3px)}to{opacity:1;transform:translateY(0)}}
+.fleet-toast-stack{position:fixed;z-index:1000;right:20px;top:82px;display:grid;gap:10px;width:min(370px,calc(100vw - 32px));pointer-events:none}
+.fleet-workspace .fleet-toast-stack .message{display:flex;align-items:flex-start;gap:10px;margin:0;padding:13px 14px;border:1px solid #cfe7da;border-radius:12px;background:#f4fbf7;color:#245a40;box-shadow:0 8px 25px rgba(31,50,39,.13);pointer-events:auto;animation:workspace-appear .25s ease-out both}
+.fleet-toast-stack .message::before{content:'✓';display:grid;place-items:center;flex:0 0 23px;height:23px;border-radius:50%;background:#dcf2e4;color:#168052;font-weight:700}
+.fleet-toast-stack .message .toast-text{flex:1;min-width:0}
+.fleet-toast-stack .toast-close{border:0;background:transparent;color:#456b56;font-size:20px;line-height:1;cursor:pointer;padding:0 2px}
+.fleet-toast-stack .toast-close:focus-visible{outline:2px solid #168052;outline-offset:2px}
+@media(max-width:760px){.fleet-toast-stack{top:72px;right:16px}}
+@media(prefers-reduced-motion:reduce){.fleet-workspace :is(.btn,input,select,textarea,.fleet-vehicle,.tablebox tbody tr){transition:none!important}.fleet-workspace :is(.vehicle-menu[open] .vehicle-menu-panel,dialog[open],details[open] > :not(summary),.fleet-toast-stack .message){animation:none}}
+
+/* Clearer hierarchy, filter feedback and touch-friendly controls. */
+.fleet-workspace .vehicle-pair b{font-size:15px;font-weight:800}
+.fleet-workspace .vehicle-pair small,.fleet-workspace .vehicle-facts dt{font-size:11px;letter-spacing:.015em}
+.fleet-workspace .vehicle-facts dd{color:#26313b;line-height:1.5}
+.fleet-workspace .vehicle-facts dt::before{content:"";display:inline-block;width:14px;height:14px;margin-right:6px;vertical-align:-3px;background:url('cargo-icons/users.svg') center/contain no-repeat;opacity:.62}
+.fleet-workspace .fleet-job-route,.fleet-workspace .fleet-job-area,.fleet-workspace .fleet-job-street{overflow-wrap:anywhere}
+.fleet-workspace .trip-active-filters{grid-column:1/-1;display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding-top:12px;border-top:1px solid #eceff2;color:#59636e;font-size:12px}
+.fleet-workspace .trip-active-filters span:not(:first-child){padding:4px 9px;border-radius:7px;background:#fff0e8;color:#9a431e;overflow-wrap:anywhere;max-width:100%}
+.fleet-workspace .trip-active-filters a{margin-left:auto;font-weight:700}
+.fleet-workspace .trip-field .helptext{display:block;margin-top:6px;color:#65717d;line-height:1.5}
+.fleet-workspace .trip-field.has-errors :is(input,select,textarea),.fleet-workspace :is(input,select,textarea)[aria-invalid=true]{border-color:#bf5d4d;box-shadow:0 0 0 3px #fae8e5}
+.fleet-workspace .trip-field .errorlist{margin:6px 0 0;padding-left:19px;color:#a2382d;font-size:12px}
+.fleet-confirm{width:min(440px,calc(100% - 32px));padding:26px;border:1px solid #e6e8ec;border-radius:16px;background:#fff;color:#26313b;box-shadow:0 20px 60px #26313b40}
+.fleet-confirm::backdrop{background:#26313b80}
+.fleet-confirm-icon{display:grid;place-items:center;width:38px;height:38px;border-radius:12px;background:#fff0e8;color:#ba461a;font-size:20px;font-weight:700}
+.fleet-confirm h2{margin:16px 0 8px;font-size:20px;line-height:1.35}
+.fleet-confirm p{margin:0;color:#626c75;line-height:1.55}
+.fleet-confirm-actions{display:flex;justify-content:flex-end;gap:9px;margin-top:22px;flex-wrap:wrap}
+.fleet-confirm-actions .danger{background:#af3b2f;color:white;border-color:#af3b2f}
+@media(max-width:760px){.fleet-workspace:not(.driver-mode) [data-filter-form]{display:flex;flex-wrap:wrap;gap:10px}.fleet-workspace:not(.driver-mode) [data-filter-form] :is(input,select){flex:1 1 100%;min-width:0;width:100%;min-height:44px}.fleet-workspace .trip-active-filters{width:100%}.fleet-workspace .trip-active-filters a{margin-left:0}.fleet-workspace .trip-compact-table{overflow-x:auto}.fleet-workspace.driver-mode :is(button,.btn){min-height:44px}}
+@media(max-width:760px){.fleet-workspace .trip-detail-page .heading>div{min-width:0;flex:1 1 100%}.fleet-workspace .trip-detail-page .heading h1{white-space:normal;overflow-wrap:anywhere}}
+@media(max-width:760px){.fleet-workspace .trip-detail-page .section-head{flex-wrap:wrap}.fleet-workspace .trip-detail-page .section-head>div{min-width:0;flex:1 1 100%}.fleet-workspace .trip-detail-page .section-head h2{white-space:normal;overflow-wrap:anywhere}}
+
+/* Short confirmations, clear vehicle actions and low-noise refresh feedback. */
+.fleet-workspace .fleet-toast-stack .toast-text a{display:inline-block;margin-left:6px;color:#176443;font-weight:700;text-decoration:underline;text-underline-offset:3px}
+.fleet-workspace .fleet-toast-stack .toast-text a:focus-visible{outline:2px solid #176443;outline-offset:3px}
+.fleet-workspace .fleet-vehicle[id]{scroll-margin-top:90px}
+.fleet-workspace .vehicle-menu-panel{padding:7px}
+.fleet-workspace .vehicle-menu-panel a{display:flex;align-items:center;gap:10px;min-height:42px;font-weight:600;color:#35424a}
+.fleet-workspace .vehicle-menu-panel a img{width:17px;height:17px;object-fit:contain;flex-shrink:0;opacity:.75}
+.fleet-workspace .vehicle-menu-panel a:focus-visible{outline:2px solid #d9460e;outline-offset:-2px}
+.fleet-workspace .vehicle-menu-label{display:block;padding:7px 12px 3px;color:#687580;font-size:10px;font-weight:700;letter-spacing:.04em;text-transform:uppercase}
+.fleet-workspace .vehicle-menu-divider{height:1px;margin:6px 8px;background:#e8ebed}
+.fleet-workspace .vehicle-menu-panel small{padding-top:5px}
+.fleet-workspace .fleet-live-note{display:flex;align-items:center;gap:8px;min-height:20px}
+.fleet-workspace .fleet-live-note:empty{display:none}
+.fleet-workspace .fleet-live-note::before{content:'';width:7px;height:7px;flex:none;border-radius:50%;background:#238658}
+.fleet-workspace .fleet-live-note[data-state="loading"]::before{background:#e86b2b;animation:fleet-status-pulse 1s ease-in-out infinite}
+.fleet-workspace .fleet-live-note[data-state="error"]::before{background:#b94638}
+@keyframes fleet-status-pulse{50%{opacity:.35}}
+@media(prefers-reduced-motion:reduce){.fleet-workspace .fleet-live-note[data-state="loading"]::before{animation:none}}

@@ -1,0 +1,28 @@
+.fleet-workspace .maintenance-form-heading{max-width:1440px}
+.fleet-workspace .maintenance-form-panel{max-width:1440px;padding:24px;border:1px solid #e1e5e8;border-radius:16px;background:#fff}
+.fleet-workspace .maintenance-form-grid{display:grid;grid-template-columns:minmax(0,1fr) 300px;gap:22px;align-items:start}
+.fleet-workspace .maintenance-form-main{display:grid;gap:18px;min-width:0}
+.fleet-workspace .maintenance-form-section{min-width:0;margin:0;padding:18px;border:1px solid #e3e7ea;border-radius:13px}
+.fleet-workspace .maintenance-form-section legend{padding:0 7px;font-size:16px;font-weight:700;color:#20242a}
+.fleet-workspace .maintenance-form-section legend span{display:inline-grid;place-items:center;width:27px;height:27px;margin-right:7px;border-radius:8px;background:#fff0e7;color:#b9410c;font-size:11px}
+.fleet-workspace .maintenance-form-section>p{margin:0 0 16px;color:#65727c;font-size:13px;line-height:1.55}
+.fleet-workspace .maintenance-field-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px 16px}
+.fleet-workspace .maintenance-field-grid .trip-field{min-width:0}
+.fleet-workspace .maintenance-field-grid :is(input:not([type=checkbox]),select,textarea){width:100%;min-height:44px}
+.fleet-workspace .maintenance-field-grid label{display:block;margin-bottom:6px;font-weight:700;font-size:13px}
+.fleet-workspace .maintenance-field-grid .helptext{display:block;margin-top:5px;color:#687781;font-size:11px;line-height:1.5}
+.fleet-workspace .maintenance-notes{grid-column:1/-1}
+.fleet-workspace .maintenance-form-example{display:flex;flex-direction:column;gap:4px;margin-top:15px;padding:12px 14px;border:1px solid #f1ded2;border-radius:10px;background:#fff8f3;font-size:12px;line-height:1.5;color:#725849}
+.fleet-workspace .maintenance-form-example b{color:#934015}
+.fleet-workspace .maintenance-form-aside{padding:20px;border:1px solid #e1e7e9;border-radius:13px;background:#f6f8f9;color:#52616b}
+.fleet-workspace .maintenance-aside-icon{width:40px;height:40px;display:grid;place-items:center;border-radius:11px;background:#ffede3}
+.fleet-workspace .maintenance-aside-icon img{width:20px;height:20px}
+.fleet-workspace .maintenance-form-aside h2{font-size:17px;color:#20242a;margin:14px 0 10px}
+.fleet-workspace .maintenance-form-aside ol{padding-left:20px;margin:0;font-size:12px;line-height:1.65}
+.fleet-workspace .maintenance-form-aside li+li{margin-top:8px}
+.fleet-workspace .maintenance-form-aside p{padding-top:12px;margin:12px 0 0;border-top:1px solid #dfe5e7;font-size:12px;line-height:1.6}
+.fleet-workspace .maintenance-form-footer{display:flex;justify-content:space-between;align-items:center;gap:16px;flex-wrap:wrap;padding-top:20px;margin-top:20px;border-top:1px solid #e8ecee;color:#66747d;font-size:12px}
+.fleet-workspace .maintenance-form-footer>div{display:flex;gap:9px;flex-wrap:wrap}
+.fleet-workspace .maintenance-form-panel :is(input,select,textarea,button,a):focus-visible{outline:3px solid #d9460e;outline-offset:3px}
+@media(max-width:900px){.fleet-workspace .maintenance-form-grid{grid-template-columns:1fr}.fleet-workspace .maintenance-form-aside{order:-1}}
+@media(max-width:600px){.fleet-workspace .maintenance-form-panel{padding:16px}.fleet-workspace .maintenance-field-grid{grid-template-columns:1fr}.fleet-workspace .maintenance-notes{grid-column:auto}.fleet-workspace .maintenance-form-footer>div{width:100%}.fleet-workspace .maintenance-form-footer .btn{flex:1;justify-content:center}}

@@ -1,1 +1,10 @@
-<nav class="admin-tabs" aria-label="Розділи адмінпанелі"><a href="{% url 'administration' %}">← Адмін панель</a><a href="{% url 'accounts' %}">Користувачі</a><a href="{% url 'saved_places' %}">Збережені місця</a><a href="{% url 'admin_activity' %}">Журнал дій</a><a href="{% url 'password_change' %}">Змінити пароль</a></nav>
+{% load static %}{% with current=request.resolver_match.url_name %}<nav class="admin-nav" aria-label="Адміністрування">
+<a href="{% url 'admin_overview' %}" {% if current == 'admin_overview' %}aria-current="page"{% endif %}><img src="{% static 'cargo-icons/history.svg' %}" alt="" aria-hidden="true">Огляд</a>
+<a href="{% url 'accounts' %}" {% if current == 'accounts' or current == 'account_detail' %}aria-current="page"{% endif %}><img src="{% static 'cargo-icons/users.svg' %}" alt="" aria-hidden="true">Користувачі та авто</a>
+<a href="{% url 'admin_roles' %}" {% if current == 'admin_roles' %}aria-current="page"{% endif %}><img src="{% static 'cargo-icons/shield.svg' %}" alt="" aria-hidden="true">Ролі й доступ</a>
+<a href="{% url 'admin_journal' %}" {% if current == 'admin_journal' %}aria-current="page"{% endif %}><img src="{% static 'cargo-icons/audit.svg' %}" alt="" aria-hidden="true">Журнал дій</a>
+<a href="{% url 'admin_maintenance' %}" {% if current == 'admin_maintenance' %}aria-current="page"{% endif %}><img src="{% static 'cargo-icons/server.svg' %}" alt="" aria-hidden="true">Обслуговування</a>
+<a href="{% url 'admin_mail' %}" {% if current == 'admin_mail' %}aria-current="page"{% endif %}><img src="{% static 'cargo-icons/audit.svg' %}" alt="" aria-hidden="true">Пошта SMTP</a>
+<a href="{% url 'saved_places' %}" {% if current == 'saved_places' or current == 'saved_place_edit' or current == 'saved_place_create' %}aria-current="page"{% endif %}><img src="{% static 'cargo-icons/pin.svg' %}" alt="" aria-hidden="true">Збережені місця</a>
+<a href="{% url 'password_change' %}" {% if current == 'password_change' %}aria-current="page"{% endif %}><img src="{% static 'cargo-icons/shield.svg' %}" alt="" aria-hidden="true">Змінити пароль</a>
+</nav>{% endwith %}

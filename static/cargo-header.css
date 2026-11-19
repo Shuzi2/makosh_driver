@@ -1,0 +1,142 @@
+/* CARGO-inspired identity bar, scoped to the fleet shell. */
+.fleet-workspace .cargo-header { grid-column: 1 / -1; height: 68px; background: #fff; border-bottom: 1px solid #e6e8ec; }
+.fleet-workspace .cargo-header-inner { height: 100%; padding: 0 28px; display: flex; align-items: center; justify-content: space-between; gap: 16px; }
+.fleet-workspace .cargo-brand { display: inline-flex; align-items: center; gap: 17px; min-width: 0; }
+.fleet-workspace .cargo-brand img { display: block; width: 142px; height: auto; }
+.fleet-workspace .cargo-brand span { border-left: 1px solid #e6e8ec; padding-left: 17px; color: #6b6e75; font-size: 11px; letter-spacing: .04em; white-space: nowrap; }
+.fleet-workspace .cargo-admin { display: inline-flex; align-items: center; justify-content: center; gap: 7px; min-height: 42px; padding: 0 15px; border: 1px solid #e3e5e8; border-radius: 8px; color: #303238; font-weight: 600; white-space: nowrap; }
+.fleet-workspace .cargo-admin:hover { color: #b83a0b; border-color: #ea5b0c; background: #fff8f4; }
+.fleet-workspace :is(.cargo-brand,.cargo-admin,.driver-brand):focus-visible { outline: 3px solid #ea5b0c; outline-offset: 3px; }
+.fleet-workspace .app { grid-template-rows: 68px 1fr; }
+.fleet-workspace .app > aside { top: 68px; }
+.fleet-workspace .app > main { grid-column: 2; }
+.fleet-workspace .driver-brand { display: inline-block; vertical-align: middle; }
+.fleet-workspace .driver-brand img { display: block; width: 112px; height: auto; }
+@media (max-width: 760px) {
+  .fleet-workspace .cargo-header { height: 62px; }
+  .fleet-workspace .cargo-header-inner { padding: 0 16px; }
+  .fleet-workspace .cargo-brand img { width: 112px; }
+  .fleet-workspace .cargo-brand span { display: none; }
+  .fleet-workspace .cargo-admin { padding: 0 10px; font-size: 12px; }
+  .fleet-workspace .app > aside { top: auto; }
+}
+.fleet-workspace .cargo-brand { gap: 9px; } .fleet-workspace .cargo-brand .cargo-symbol { width: 48px; height: 36px; object-fit: contain; } .fleet-workspace .cargo-brand strong { color: #1e1f22; font-size: 19px; letter-spacing: .03em; } .fleet-workspace .cargo-brand span { margin-left: 8px; } @media (max-width:760px) { .fleet-workspace .cargo-brand .cargo-symbol { width: 38px; height: 32px; } .fleet-workspace .cargo-brand strong { font-size: 16px; } }
+
+/* Main navigation: keep every link in place while its surface and icon respond. */
+.fleet-workspace .app > aside{background:#fff;border-right:1px solid #e8ebef}
+.fleet-workspace .app > aside nav[aria-label="Головна навігація"]{display:flex;flex-direction:column;gap:6px;margin-top:20px}
+.fleet-workspace .app > aside nav[aria-label="Головна навігація"] a{position:relative;display:flex;align-items:center;gap:11px;min-height:48px;padding:8px 10px;border-radius:11px;color:#49515c;font-size:13px;font-weight:600;text-decoration:none;transition:background-color .2s ease,color .2s ease,box-shadow .2s ease}
+.fleet-workspace .app > aside nav[aria-label="Головна навігація"] .nav-icon{display:grid;place-items:center;flex:0 0 32px;width:32px;height:32px;border-radius:9px;background:#f3f5f7;transition:background-color .2s ease}
+.fleet-workspace .app > aside nav[aria-label="Головна навігація"] .nav-icon img{display:block;width:18px;height:18px;opacity:.68;transition:transform .2s ease,opacity .2s ease}
+.fleet-workspace .app > aside nav[aria-label="Головна навігація"] a:hover{background:#f8f9fb;color:#222830;box-shadow:none}
+.fleet-workspace .app > aside nav[aria-label="Головна навігація"] a:hover .nav-icon{background:#fff0e8}
+.fleet-workspace .app > aside nav[aria-label="Головна навігація"] a:hover .nav-icon img{opacity:1;transform:scale(1.08)}
+.fleet-workspace .app > aside nav[aria-label="Головна навігація"] a.active{background:#fff3eb;color:#b63a0d;box-shadow:inset 3px 0 #e64a0e}
+.fleet-workspace .app > aside nav[aria-label="Головна навігація"] a.active .nav-icon{background:#ffe7d9}
+.fleet-workspace .app > aside nav[aria-label="Головна навігація"] a.active .nav-icon img{opacity:1}
+.fleet-workspace .app > aside nav[aria-label="Головна навігація"] a:focus-visible{outline:3px solid #e64a0e;outline-offset:2px}
+.fleet-workspace .app > aside nav[aria-label="Головна навігація"] b{margin-left:auto;flex-shrink:0;padding:3px 7px;border-radius:20px;background:#fff0e8;color:#ba4215;font-size:10px;font-weight:700;line-height:1.3}
+.fleet-workspace .app > aside nav[aria-label="Головна навігація"] b[hidden]{display:none}
+@media(max-width:760px){.fleet-workspace .app > aside nav[aria-label="Головна навігація"]{flex-direction:row;overflow-x:auto;gap:6px;margin-top:12px;padding:3px 3px 8px}.fleet-workspace .app > aside nav[aria-label="Головна навігація"] a{min-height:42px;white-space:nowrap;padding:5px 10px;font-size:12px}.fleet-workspace .app > aside nav[aria-label="Головна навігація"] .nav-icon{width:29px;height:29px;flex-basis:29px}.fleet-workspace .app > aside nav[aria-label="Головна навігація"] .nav-icon img{width:16px;height:16px}}
+@media(prefers-reduced-motion:reduce){.fleet-workspace .app > aside nav[aria-label="Головна навігація"] :is(a,.nav-icon,.nav-icon img){transition:none}}
+
+/* Header accents complement the navigation without moving the existing controls. */
+.fleet-workspace .cargo-header{position:relative;background:linear-gradient(100deg,#fff 0%,#fff 32%,#fffbf8 62%,#fff 100%);box-shadow:0 2px 12px rgba(38,31,27,.035)}
+.fleet-workspace .cargo-header:after{content:"";position:absolute;bottom:-1px;left:28px;width:112px;height:2px;border-radius:2px;background:linear-gradient(90deg,#eb5b20,#f8d6c6,transparent)}
+.fleet-workspace .cargo-brand{text-decoration:none}.fleet-workspace .cargo-brand .cargo-symbol{transition:transform .22s ease}.fleet-workspace .cargo-brand:hover .cargo-symbol{transform:scale(1.06)}
+.fleet-workspace .cargo-header-motif{display:flex;align-items:center;justify-content:center;gap:10px;position:absolute;left:50%;transform:translateX(-50%);color:#959ca4;pointer-events:none}
+.fleet-workspace .cargo-header-motif .cargo-header-line{width:34px;height:1px;background:linear-gradient(90deg,transparent,#e7ded9)}
+.fleet-workspace .cargo-header-motif .cargo-header-line:last-child{transform:rotate(180deg)}
+.fleet-workspace .cargo-header-icon{display:grid;place-items:center;width:29px;height:29px;border:1px solid #f6e8df;border-radius:9px;background:#fff7f2}
+.fleet-workspace .cargo-header-icon img{width:15px;height:15px;opacity:.65}
+.fleet-workspace .cargo-header-caption{font-size:11px;font-weight:600;letter-spacing:.025em;white-space:nowrap}
+.fleet-workspace .cargo-admin{position:relative;gap:9px;padding:4px 13px 4px 6px;border:1px solid #e9e8e6;border-radius:10px;background:#fff;color:#654838;box-shadow:0 2px 7px rgba(39,30,25,.035);text-decoration:none;transition:background-color .2s ease,border-color .2s ease,box-shadow .2s ease,color .2s ease}
+.fleet-workspace .cargo-admin-icon{display:grid;place-items:center;width:30px;height:30px;border-radius:8px;background:#fff0e8;transition:background-color .2s ease}
+.fleet-workspace .cargo-admin-icon img{width:16px;height:16px;transition:transform .2s ease}
+.fleet-workspace .cargo-admin:hover{background:#fff8f4;border-color:#efc4ad;box-shadow:0 4px 12px rgba(155,69,31,.10);color:#a3330c}
+.fleet-workspace .cargo-admin:hover .cargo-admin-icon img{transform:scale(1.1)}
+@media(max-width:1000px){.fleet-workspace .cargo-header-motif{display:none}}
+@media(max-width:760px){.fleet-workspace .cargo-header:after{left:16px;width:80px}.fleet-workspace .cargo-admin{padding:4px 9px 4px 5px}.fleet-workspace .cargo-admin-icon{width:27px;height:27px}}
+@media(prefers-reduced-motion:reduce){.fleet-workspace :is(.cargo-brand .cargo-symbol,.cargo-admin,.cargo-admin-icon,.cargo-admin-icon img){transition:none}}
+
+/* Keep the desktop header aligned with the fixed sidebar while scrolling. */
+@media(min-width:761px){.fleet-workspace .app > .cargo-header{position:sticky;top:0;z-index:30;align-self:start}}
+
+/* Gentle responses to interaction; the layout stays still. */
+@media(hover:hover){
+  .fleet-workspace .fleet-vehicle{transition:border-color .22s ease,box-shadow .22s ease}
+  .fleet-workspace .fleet-vehicle:hover{border-color:#d9ccc3;box-shadow:0 6px 20px rgba(50,40,34,.08)}
+  .fleet-workspace .btn{transition:background-color .18s ease,border-color .18s ease,box-shadow .18s ease}
+  .fleet-workspace .btn:hover{box-shadow:0 3px 10px rgba(151,76,40,.10)}
+}
+@media(prefers-reduced-motion:reduce){.fleet-workspace :is(.fleet-vehicle,.btn){transition:none}}
+
+/* Cross-fade complete pages, without assigning moving transition names to navigation. */
+@view-transition { navigation: auto; }
+@keyframes fleet-page-out { from { opacity: 1 } to { opacity: 0 } }
+@keyframes fleet-page-in { from { opacity: 0 } to { opacity: 1 } }
+::view-transition-group(root) { animation-duration: 320ms; }
+::view-transition-old(root) { animation: 320ms ease-in-out both fleet-page-out; mix-blend-mode: normal; }
+::view-transition-new(root) { animation: 320ms ease-in-out both fleet-page-in; mix-blend-mode: normal; }
+/* A content-only entrance also works when cross-document transitions are absent. */
+@keyframes fleet-content-enter { from { opacity: .55 } to { opacity: 1 } }
+@media (prefers-reduced-motion: no-preference) {
+  .fleet-workspace .app > main,
+  .fleet-workspace .driver-main { animation: fleet-content-enter 320ms ease-out; }
+}
+@media(prefers-reduced-motion:reduce) {
+  ::view-transition-group(root), ::view-transition-old(root), ::view-transition-new(root) { animation-duration: .01ms; }
+}
+
+/* M TRUCK identity uses the same mark in the main and driver headers. */
+.fleet-workspace .cargo-brand .cargo-symbol{width:50px;height:38px;object-fit:contain}
+.fleet-workspace .cargo-brand strong{color:#26313b;font-size:19px;font-weight:800;letter-spacing:.055em;white-space:nowrap}
+.fleet-workspace .driver-brand{display:inline-flex;align-items:center;gap:7px;text-decoration:none;color:#26313b}
+.fleet-workspace .driver-brand img{display:block;width:42px;height:32px;object-fit:contain}
+.fleet-workspace .driver-brand strong{font-size:15px;letter-spacing:.04em;white-space:nowrap}
+.fleet-workspace .mtruck-login{display:flex;align-items:center;gap:12px;letter-spacing:0}
+.fleet-workspace .mtruck-login img{display:block;width:58px;height:44px;object-fit:contain}
+.fleet-workspace .mtruck-login b{font-size:22px;color:#26313b;letter-spacing:.05em}
+.fleet-workspace .mtruck-login small{margin-top:1px;letter-spacing:.03em}
+@media(max-width:760px){.fleet-workspace .cargo-brand .cargo-symbol{width:40px;height:32px}.fleet-workspace .cargo-brand strong{font-size:16px}}
+
+/* Compact administration and logout controls in the header. */
+.fleet-workspace .cargo-header-actions{display:flex;align-items:center;gap:12px;flex-shrink:0}
+.fleet-workspace .cargo-header-actions form{display:flex;margin:0}
+.fleet-workspace .cargo-header-action{display:grid;place-items:center;width:44px;height:44px;padding:0;border:1px solid #e2e5e9;border-radius:12px;background:#fff;box-shadow:0 2px 6px rgba(31,36,42,.035);cursor:pointer;transition:background-color .18s ease,border-color .18s ease,box-shadow .18s ease}
+.fleet-workspace .cargo-header-action img{display:block;width:19px;height:19px;transition:transform .18s ease}
+.fleet-workspace .cargo-header-action:hover{background:#fff6f0;border-color:#edc4af;box-shadow:0 3px 11px rgba(155,69,31,.10)}
+.fleet-workspace .cargo-header-action:hover img{transform:scale(1.08)}
+.fleet-workspace .cargo-header-action:focus-visible{outline:3px solid #e64a0e;outline-offset:3px}
+.fleet-workspace .cargo-header-divider{width:1px;height:30px;background:#e9e9eb}
+@media(max-width:760px){.fleet-workspace .cargo-header-actions{gap:8px}.fleet-workspace .cargo-header-action{width:40px;height:40px;border-radius:10px}.fleet-workspace .cargo-header-divider{height:26px}}
+@media(prefers-reduced-motion:reduce){.fleet-workspace .cargo-header-action,.fleet-workspace .cargo-header-action img{transition:none}}
+
+/* A quiet route accent appears once, without shifting the header layout. */
+.fleet-workspace .cargo-header-motif .cargo-header-line{position:relative}
+.fleet-workspace .cargo-header-motif .cargo-header-line::after{content:"";position:absolute;top:-2px;left:0;width:5px;height:5px;border-radius:50%;background:#e98a5e;opacity:0;animation:header-route-accent 2.8s ease-in-out .3s 1 both}
+@keyframes header-route-accent{0%{opacity:0;transform:translateX(0)} 25%{opacity:.65} 75%{opacity:.65} 100%{opacity:0;transform:translateX(29px)}}
+@media (prefers-reduced-motion:reduce){.fleet-workspace .cargo-header-motif .cargo-header-line::after{animation:none}}
+
+/* A calm location cue and tooltips preserve the header's fixed dimensions. */
+.fleet-workspace .cargo-header{transition:box-shadow .35s ease,border-color .35s ease}
+.fleet-workspace .cargo-header.is-scrolled{border-bottom-color:#e3dedb;box-shadow:0 7px 22px rgba(38,31,27,.10)}
+.fleet-workspace .cargo-header-caption{max-width:220px;overflow:hidden;text-overflow:ellipsis;color:#69727c}
+.fleet-workspace .cargo-header-motif .cargo-header-line{width:40px;background:linear-gradient(90deg,#f7ddd0,#eaa780)}
+.fleet-workspace .cargo-header-motif .cargo-header-line::before{content:"";position:absolute;top:-2px;left:0;width:5px;height:5px;border-radius:50%;background:#eab49a}
+
+/* The same fleet as on the login screen, scaled for the desktop header. */
+.fleet-workspace .cargo-header-truck{position:relative;display:block;flex:none;width:98px;height:51px;pointer-events:none}
+.fleet-workspace .cargo-header-truck .fleet-motion{position:absolute;inset:0;overflow:hidden}
+.fleet-workspace .cargo-header-truck :is(.fleet-motion-halo,.fleet-motion-orbit,.fleet-motion-road,.fleet-wheel-layer){display:none}
+.fleet-workspace .cargo-header-truck .fleet-motion-truck{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;object-position:center;animation:header-truck-roll 7s ease-in-out infinite}
+.fleet-workspace .cargo-header-grain .fleet-motion-truck{animation-delay:-3.5s}
+@keyframes header-truck-roll{0%,100%{transform:translateX(-1px)}50%{transform:translateX(1px)}}
+.fleet-workspace .cargo-header-truck:not(.cargo-header-grain) .fleet-motion-truck{animation:header-tent-forward 9s linear infinite}
+.fleet-workspace .cargo-header-truck:not(.cargo-header-grain) .fleet-trailer-wordmark image{transform:translate(2270px,0) scaleX(-1) translate(960px,320px) skewY(7deg)}
+@keyframes header-tent-forward{0%{transform:translateX(-3px) scaleX(-1);opacity:0}10%,85%{opacity:1}95%,100%{transform:translateX(3px) scaleX(-1);opacity:0}}
+@media(prefers-reduced-motion:reduce){.fleet-workspace .cargo-header-truck .fleet-motion-truck{animation:none}.fleet-workspace .cargo-header-truck:not(.cargo-header-grain) .fleet-motion-truck{transform:scaleX(-1)}}
+.fleet-workspace .cargo-header-action{position:relative;transition:background-color .3s ease,border-color .3s ease,box-shadow .3s ease}
+.fleet-workspace .cargo-header-action::after{content:attr(aria-label);position:absolute;z-index:40;top:calc(100% + 10px);right:0;padding:7px 10px;border:1px solid #f0e3dc;border-radius:8px;background:#fff;color:#614a3e;font-size:11px;font-weight:600;line-height:1.3;white-space:nowrap;box-shadow:0 6px 18px rgba(38,31,27,.12);opacity:0;visibility:hidden;transform:translateY(-4px);pointer-events:none;transition:opacity .25s ease,transform .25s ease,visibility .25s}
+.fleet-workspace .cargo-header-action:is(:hover,:focus-visible)::after{opacity:1;visibility:visible;transform:translateY(0)}
+@media(prefers-reduced-motion:reduce){.fleet-workspace .cargo-header,.fleet-workspace .cargo-header-action,.fleet-workspace .cargo-header-action::after{transition:none}}

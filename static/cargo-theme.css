@@ -1,0 +1,37 @@
+/* CARGO palette, applied without changing the fleet's layout or content. */
+.fleet-workspace { --bg:#eef0f4; --ink:#17181a; --muted:#5b5e66; --line:#e6e8ec; --mineral-border:#d6d9e0; --mineral-shadow:0 1px 2px rgba(20,22,28,.06); background:#eef0f4; color:#17181a; accent-color:#e64a0e; }
+.fleet-workspace aside { background:#fff; border-color:#e6e8ec; box-shadow:none; }
+.fleet-workspace :is(.brand,.login-identity,.heading h1,h1,h2,h3,.truck-head b,.profile b,.metric strong,.metric.highlight strong,.vehicle-facts dd,.vehicle-job .route,.route,.queue-heading b) { color:#17181a; }
+.fleet-workspace :is(.brand-sub,.profile small,.muted,.hint,.helptext,.eyebrow,.fleet-total,.fleet-live-note,.metric small,.metric span,.metric em,.vehicle-facts dt,.vehicle-pair small,.status-changed,.vehicle-job p,.vehicle-job small,.queue-item small) { color:#5b5e66; }
+.fleet-workspace .profile { border-color:#e6e8ec; }
+.fleet-workspace .avatar { background:#fff0e6; color:#b83a0b; }
+.fleet-workspace nav a { color:#3a3d44; }
+.fleet-workspace nav a:hover,.fleet-workspace nav a:focus-visible { background:#f5f6f8; color:#17181a; box-shadow:none; }
+.fleet-workspace nav a.active,.fleet-workspace nav a.active:hover,.fleet-workspace nav a.active:focus-visible { background:#fff4ec; color:#b83a0b; box-shadow:inset 3px 0 #e64a0e; }
+.fleet-workspace :is(.panel,.tablebox,.metric,.metric.highlight,.fleet-vehicle,.public .login) { background:#fff; border-color:#d6d9e0; box-shadow:0 1px 2px rgba(20,22,28,.06); }
+.fleet-workspace .fleet-vehicle:hover { background:#fff; border-color:#c7cbd3; box-shadow:0 3px 12px rgba(20,22,28,.08); }
+.fleet-workspace :is(.vehicle-facts,.card-bottom,.vehicle-queue,.vehicle-history-links,.queue-item,.document,.event,.fleet-group-head) { border-color:#e6e8ec; }
+.fleet-workspace .fleet-group-count { background:#f5f6f8; color:#3a3d44; }
+.fleet-workspace :is(a,.link,.profile .link,.queue-heading a) { color:#b83a0b; }
+.fleet-workspace :is(a:hover,.link:hover) { color:#8f2c07; }
+.fleet-workspace .btn { background:#f5f6f8; border-color:#d6d9e0; color:#3a3d44; box-shadow:none; }
+.fleet-workspace .btn.primary { background:#e64a0e; border-color:#e64a0e; color:#fff; box-shadow:0 1px 2px rgba(20,22,28,.12); }
+.fleet-workspace .btn:hover { background:#e6e8ec; color:#17181a; }
+.fleet-workspace .btn.primary:hover { background:#b83a0b; border-color:#b83a0b; color:#fff; }
+.fleet-workspace :is(input,select,textarea,.search,.fleet-toolbar .search) { background:#fff; border-color:#d6d9e0; color:#17181a; box-shadow:none; }
+.fleet-workspace :is(input,select,textarea):focus { border-color:#e64a0e; background:#fff; }
+.fleet-workspace :focus-visible { outline-color:#e64a0e; }
+.fleet-workspace label { color:#3a3d44; }
+.fleet-workspace th { background:#f5f6f8; color:#3a3d44; }
+.fleet-workspace td { border-color:#e6e8ec; color:#17181a; }
+.fleet-workspace td small { color:#5b5e66; }
+.fleet-workspace tbody tr:hover { background:#f9fafb; }
+.fleet-workspace :is(.vehicle-menu summary,.edit-pencil,.dialog-close) { background:#f5f6f8; border-color:#d6d9e0; color:#3a3d44; }
+.fleet-workspace :is(.vehicle-menu-panel,.quick-edit-dialog,.document-viewer) { background:#fff; border-color:#d6d9e0; color:#17181a; }
+.fleet-workspace :is(.admin-nav,.admin-metrics>div) { background:#f5f6f8; border-color:#e6e8ec; }
+.fleet-workspace .admin-nav a[aria-current=page] { background:#fff4ec; color:#b83a0b; }
+.fleet-workspace.driver-mode { background:#eef0f4; }
+.fleet-workspace :is(.driver-task,.driver-document-workspace,.driver-empty,.driver-history-selected,.driver-finish-reminder) { background:#fff; border-color:#d6d9e0; }
+.fleet-workspace :is(.driver-task-action,.driver-trip-footer,.driver-doc-picker,.driver-saved-docs,.driver-history,.driver-next-list) { background:#f5f6f8; border-color:#e6e8ec; }
+.fleet-workspace.driver-mode .driver-bottom-nav { background:#fff; border-color:#e6e8ec; }
+.fleet-workspace.driver-mode .driver-bottom-nav a.active { background:#fff4ec; color:#b83a0b; }

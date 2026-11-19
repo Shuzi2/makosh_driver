@@ -1,0 +1,5 @@
+{% extends 'base.html' %}{% block content %}
+<div class="heading"><div><div class="eyebrow">ВАШІ ПЕРЕВЕЗЕННЯ</div><h1>Історія моїх рейсів</h1><p class="muted">Лише призначені вам рейси та їхні документи.</p></div></div>
+<form method="get" class="filters panel"><input name="q" value="{{ q }}" placeholder="Маршрут, авто або номер ТТН" aria-label="Пошук мого рейсу"><select name="status" aria-label="Статус"><option value="">Усі мої рейси</option value="missing" {% if selected == 'missing' %}selected{% endif %}>Потрібна підписана ТТН</option>{% for value,label in statuses %}<option value="{{ value }}" {% if selected == value %}selected{% endif %}>{{ label }}</option>{% endfor %}</select><button class="btn primary">Знайти</button></form>
+<div class="driver-trips">{% for trip in trips %}{% include 'fleet/trip_card.html' %}{% empty %}<div class="panel empty">Рейсів за цим запитом немає.<br>Спробуйте змінити пошук або статус.</div>{% endfor %}</div>
+{% endblock %}

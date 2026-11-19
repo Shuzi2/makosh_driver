@@ -1,0 +1,23 @@
+{% extends 'fleet/workspace.html' %}{% load static %}{% block extra_css %}<link rel="stylesheet" href="{% static 'routes.css' %}"><link rel="stylesheet" href="{% static 'trip_create.css' %}">{% endblock %}{% block content %}
+<div class="heading create-heading"><div><span class="create-eyebrow">ПЛАНУВАННЯ ПЕРЕВЕЗЕННЯ</span><h1>Новий рейс</h1><p class="muted">Авто, водій і маршрут — усе для наступної поїздки.</p></div><a class="btn" href="{% url 'dashboard' %}">← До автопарку</a></div>
+<form method="post" class="trip-create-form new-trip-workspace" data-trip-create-form>{% csrf_token %}{{ form.non_field_errors }}
+  {% if copy_from %}<input type="hidden" name="copy_from" value="{{ copy_from.pk }}"><div class="trip-copy-notice"><div><b>Новий рейс на основі №{{ copy_from.pk }}</b><p>Маршрут, контакти, вантаж і вказівки вже заповнені. Оберіть авто, водія та перевірте дату. Номер ТТН, документи й фактичні дані заповнюються заново.</p></div><a href="{% url 'trip_detail' copy_from.pk %}">До вихідного рейсу →</a></div>{% endif %}
+  <section class="panel trip-form-section create-assignment"><div class="trip-form-title"><div><span class="trip-section-kicker">01 · Призначення</span><h2>Хто їде й коли</h2></div><span class="create-section-note">Водій побачить рейс після створення</span></div><div class="trip-fields assignment-fields">
+    {% include 'fleet/trip_field.html' with field=form.vehicle %}{% include 'fleet/trip_field.html' with field=form.driver %}{% include 'fleet/trip_field.html' with field=form.planned_date %}{% include 'fleet/trip_field.html' with field=form.scheduling %}
+  </div></section>
+  {% if route_formset %}{% include 'fleet/route_formset.html' with compact_create=True %}<details class="panel create-general-notes" {% if form.notes.value or form.notes.errors %}open{% endif %}><summary><span>Загальні вказівки водію</span><small>Для всього рейсу · необов’язково</small><b aria-hidden="true">＋</b></summary><div>{% include 'fleet/trip_field.html' with field=form.notes %}</div></details>{% else %}
+  <div class="trip-route-columns">
+    <section class="panel trip-form-section"><div class="trip-form-title"><span>2</span><div><h2>Завантаження</h2><p>Звідки забрати вантаж</p></div></div><div class="trip-fields">
+      {% include 'fleet/trip_field.html' with field=form.origin %}{% include 'fleet/location_field.html' with stop='origin' address=form.origin lat=form.origin_lat lon=form.origin_lon confirmed=form.origin_point_confirmed %}{% include 'fleet/trip_field.html' with field=form.loading_contact_name %}{% include 'fleet/trip_field.html' with field=form.loading_contact_phone %}
+    </div></section>
+    <section class="panel trip-form-section"><div class="trip-form-title"><span>3</span><div><h2>Розвантаження</h2><p>Куди доставити вантаж</p></div></div><div class="trip-fields">
+      {% include 'fleet/trip_field.html' with field=form.destination %}{% include 'fleet/location_field.html' with stop='destination' address=form.destination lat=form.destination_lat lon=form.destination_lon confirmed=form.destination_point_confirmed %}{% include 'fleet/trip_field.html' with field=form.contact_name %}{% include 'fleet/trip_field.html' with field=form.contact_phone %}
+    </div></section>
+  </div>
+  <section class="panel trip-form-section"><div class="trip-form-title"><span>4</span><div><h2>Вантаж і вказівки</h2><p>Інформація для виконання рейсу</p></div></div><div class="trip-fields cargo-fields">
+    {% include 'fleet/trip_field.html' with field=form.cargo %}{% include 'fleet/trip_field.html' with field=form.planned_tons %}{% include 'fleet/trip_field.html' with field=form.ttn_number %}
+    <div class="trip-field-wide">{% include 'fleet/trip_field.html' with field=form.notes %}</div>
+  </div></section>
+{% endif %}
+  <div class="trip-form-footer create-save-bar"><p><b>Готово до відправлення?</b><span>Перевірте порядок точок, вагу й контакти.</span></p><div><a class="btn" href="{% url 'dashboard' %}">Скасувати</a><button class="btn primary" type="submit">Створити рейс</button></div></div>
+</form>{% include 'fleet/location_picker.html' %}{% endblock %}

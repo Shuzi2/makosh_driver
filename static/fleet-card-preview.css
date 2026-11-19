@@ -1,0 +1,54 @@
+/* Fleet card styling for all vehicle states. */
+#fleet-cards .fleet-vehicle {
+  border: 1px solid #e8cfc2;
+  border-radius: 17px;
+  background: linear-gradient(165deg, #fff 0%, #fff 72%, #fffaf7 100%);
+  box-shadow: 0 5px 20px #20242a0c;
+  transition: border-color .2s ease, box-shadow .2s ease;
+}
+#fleet-cards .fleet-vehicle:hover {
+  border-color: #e9ad8f;
+  box-shadow: 0 9px 25px #20242a16;
+}
+#fleet-cards .fleet-vehicle .vehicle-pair small {
+  color: #77838b; font-size: 11px; letter-spacing: .02em;
+}
+#fleet-cards .fleet-vehicle .vehicle-pair b {
+  color: #20242a; font-size: 19px; letter-spacing: .03em;
+}
+#fleet-cards .fleet-vehicle .vehicle-status {
+  border-color: #ece7e3;
+}
+#fleet-cards .fleet-vehicle .vehicle-facts {
+  padding: 0 0 0 11px; border-left: 2px solid #ffb48e;
+}
+#fleet-cards .fleet-vehicle .vehicle-job {
+  background: #f8f9fa; border: 1px solid #e8ebee; border-radius: 13px;
+}
+#fleet-cards .fleet-vehicle .vehicle-section-label {
+  color: #697783; font-weight: 700; letter-spacing: .015em;
+}
+#fleet-cards .fleet-vehicle .fleet-ttn-summary {
+  background: #fff; border: 1px solid #e3e8e7; border-radius: 10px;
+}
+#fleet-cards .fleet-vehicle .vehicle-menu summary {
+  background: #fff7f2; border-color: #f0d9cb; color: #9e431c;
+}
+#fleet-cards .fleet-vehicle .vehicle-job .btn.primary {
+  border-radius: 10px; box-shadow: 0 3px 8px #e54b1624;
+}
+@media (prefers-reduced-motion: reduce) {
+  #fleet-cards .fleet-vehicle { transition: none; }
+}
+
+/* Fleet card styling keeps the existing content and controls. */
+#fleet-cards .fleet-vehicle {
+  border-color: #e4ded9; background: #fff; box-shadow: 0 9px 28px #20242a14;
+}
+#fleet-cards .fleet-vehicle .vehicle-facts { padding: 11px 12px 11px 15px; border-left: 3px solid #ff5112; border-radius: 4px 9px 9px 4px; background: #fff4ed; }
+#fleet-cards .fleet-vehicle .vehicle-facts dt { color: #915236; }
+#fleet-cards .fleet-vehicle .vehicle-job { background: #f6f8f9; border-color: #e5e9eb; padding: 16px; }
+#fleet-cards .fleet-vehicle .vehicle-section-label { display: inline-block; color: #a63b0d; background: #ffede2; border-radius: 6px; padding: 5px 8px; margin-bottom: 12px; }
+#fleet-cards .fleet-vehicle .fleet-job-place b { color: #20242a; }
+#fleet-cards .fleet-vehicle .fleet-ttn-summary { border-color: #dce3e6; box-shadow: 0 2px 8px #20242a08; }
+#fleet-cards .fleet-vehicle .fleet-ttn-heading b { color: #253038; }

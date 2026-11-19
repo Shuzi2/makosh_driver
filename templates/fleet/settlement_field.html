@@ -1,0 +1,8 @@
+<div class="settlement-field" data-settlement-field data-search-url="{% url 'settlement_search' %}">
+{% include 'fleet/trip_field.html' with field=point_form.address %}
+{{ point_form.settlement_code }}{{ point_form.settlement_name }}
+<div class="settlement-results" data-settlement-results hidden></div>
+<div class="settlement-selection" data-settlement-selection hidden></div>
+<div class="settlement-tools"><small data-settlement-message role="status">Пошук у кодифікаторі: назва, область або громада.</small><button type="button" data-settlement-manual>Ввести вручну</button><button type="button" data-settlement-reset hidden>Шукати інший населений пункт</button></div>
+<details class="settlement-area-fields" data-settlement-areas {% if point_form.region.errors or point_form.district.errors or point_form.community.errors %}open{% endif %}><summary>Область, район і громада · обов’язково</summary><div>{% include 'fleet/trip_field.html' with field=point_form.region %}{% include 'fleet/trip_field.html' with field=point_form.district %}{% include 'fleet/trip_field.html' with field=point_form.community %}</div></details>
+</div>

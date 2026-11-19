@@ -1,0 +1,8 @@
+{% extends 'base.html' %}{% load static %}
+{% block title %}Адміністрування · M TRANS{% endblock %}
+{% block extra_css %}<link rel="stylesheet" href="{% static 'administration.css' %}">{% endblock %}
+{% block content %}<div class="admin-workspace">
+{% include 'fleet/admin_nav.html' %}
+<div class="heading"><div><div class="eyebrow">КЕРУВАННЯ СИСТЕМОЮ</div><h1>Адміністрування</h1><p class="muted">Доступ команди, журнал дій та збереження даних.</p></div></div>
+{% block admin_content %}{% endblock %}</div>{% endblock %}
+

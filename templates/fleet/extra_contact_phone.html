@@ -1,0 +1,1 @@
+<details class="extra-contact-phone" {% if point_form.contact_phone_alt.value or point_form.contact_phone_alt.errors %}open{% endif %}><summary>Додатковий телефон</summary>{% include 'fleet/trip_field.html' with field=point_form.contact_phone_alt %}</details>

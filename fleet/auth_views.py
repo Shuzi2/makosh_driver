@@ -4,6 +4,7 @@ from django.contrib import messages
 from django.contrib.auth import update_session_auth_hash
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.forms import PasswordChangeForm
+from django.contrib.auth.forms import SetPasswordForm
 from django.contrib.auth.views import LoginView
 from django.db import transaction
 from django.http import HttpResponse
@@ -11,6 +12,34 @@ from django.shortcuts import render, redirect
 from django.utils import timezone
 from .forms import PhoneLoginForm
 from .models import LoginThrottle, AuditEvent, normalize_phone
+
+def account_invitation(request, uid, token):
+    from django.contrib.auth.tokens import default_token_generator
+    from django.utils.http import urlsafe_base64_decode
+    from .models import User
+    try:
+        account = User.objects.get(pk=urlsafe_base64_decode(uid).decode(), is_active=True)
+    except (ValueError, TypeError, OverflowError, User.DoesNotExist):
+        account = None
+    if account is None or not default_token_generator.check_token(account, token):
+        return HttpResponse('Посилання недійсне або прострочене. Зверніться до адміністратора.', status=400)
+    form = SetPasswordForm(account, request.POST or None)
+    if request.method == 'POST' and form.is_valid():
+        with transaction.atomic():
+            account = User.objects.select_for_update().get(pk=account.pk)
+            if not default_token_generator.check_token(account, token):
+                return HttpResponse('Посилання вже використано.', status=400)
+            form.user = account
+            form.save()
+            account.must_change_password = False
+            account.save(update_fields=['must_change_password'])
+            AuditEvent.objects.create(actor=account, action='Прийнято запрошення')
+        messages.success(request, 'Пароль встановлено. Увійдіть за номером телефону.')
+        return redirect('login')
+    response = render(request, 'registration/invitation.html', {'form': form})
+    response['Cache-Control'] = 'no-store'
+    response['Referrer-Policy'] = 'no-referrer'
+    return response
 
 class PhoneLoginView(LoginView):
     template_name = "registration/login.html"
@@ -33,6 +62,8 @@ class PhoneLoginView(LoginView):
                 b.failures+=1; b.save(); buckets.append(b)
         response=super().post(request,*args,**kwargs)
         if request.user.is_authenticated:
+            from .session_activity import observe
+            observe(request, login=True)
             LoginThrottle.objects.filter(key=keys[0]).delete()
             from django.db.models import F
             LoginThrottle.objects.filter(key=keys[1],failures__gt=0).update(failures=F("failures")-1)

@@ -1,0 +1,7 @@
+{% extends 'fleet/workspace.html' %}{% block content %}
+<div class="heading"><div><h1>Уточнити дані рейсу №{{ trip.pk }}</h1><p>{{ trip.report_tractor_plate }} · {{ trip.report_driver_name }}</p></div><a class="btn" href="{{ return_url }}">← До звіту</a></div>
+<form method="post" class="panel report-edit-form">{% csrf_token %}{{ form.revision }}<input type="hidden" name="return_url" value="{{ return_url }}">
+  <h2>Дані завершеного рейсу</h2>{% if trip.route_enabled %}<p class="notice">Маршрут, вагу й ТТН уточнюйте в окремих точках.</p><a class="btn" href="{% url 'trip_edit' trip.pk %}">Редагувати точки рейсу →</a>{% endif %}<p class="hint">Зміни оновлять рейс і підсумки звіту та збережуться в історії.</p>{{ form.non_field_errors }}
+  <div class="report-edit-grid">{% for field in form.visible_fields %}{% include 'fleet/trip_field.html' with field=field %}{% endfor %}</div>
+  <div class="report-filter-actions"><button class="btn primary" type="submit">Зберегти зміни</button><a class="btn" href="{{ return_url }}">Скасувати</a>{% if form.non_field_errors %}<a class="btn" href="{% url 'report_edit' trip.pk %}?return_url={{ return_url|urlencode }}">Відкрити актуальні дані</a>{% endif %}</div>
+</form>{% endblock %}

@@ -1,0 +1,1 @@
+{% extends 'base.html' %}{% block content %}<section class="panel"><h1>Встановлення пароля</h1><p>Введіть власний пароль для входу в автопарк.</p><form method="post">{% csrf_token %}{{ form.as_p }}<button class="btn primary">Встановити пароль</button></form></section>{% endblock %}

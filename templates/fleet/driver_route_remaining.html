@@ -1,0 +1,3 @@
+<div class="driver-compact-stops {% if driver_simple_route %}is-simple{% endif %}">{% if not driver_simple_route %}<div class="driver-compact-route-heading"><b>Точки маршруту</b><span>Виконано {{ route_done_count }} з {{ route_stop_count }}</span></div>{% endif %}
+<ol class="driver-address-list" aria-label="Адреси та контакти маршруту">{% for point in driver_display_stops %}{% include 'fleet/driver_address_point.html' %}{% endfor %}</ol>
+{% if driver_completed_stops %}<details class="driver-past-stops"><summary>Виконані зупинки · {{ driver_completed_stops|length }}</summary><ol class="driver-address-list">{% for point in driver_completed_stops %}{% include 'fleet/driver_address_point.html' %}{% endfor %}</ol></details>{% endif %}</div>

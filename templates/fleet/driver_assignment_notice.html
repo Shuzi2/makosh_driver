@@ -1,0 +1,1 @@
+{% if pending_assignments %}<section class="driver-assignment-notice" role="status"><strong>Нове завдання від логіста</strong><p>Перегляньте й прийміть призначені вам рейси.</p>{% for pending in pending_assignments %}<a href="{% url 'trip_detail' pending.pk %}">Рейс №{{ pending.pk }} · {{ pending.vehicle.plate }} →</a>{% endfor %}</section>{% endif %}

@@ -1,0 +1,1 @@
+<nav class="workspace-tabs" aria-label="Звіти й аналітика"><a href="{% url 'report' %}" {% if request.resolver_match.url_name == 'report' %}aria-current="page"{% endif %}>Рейси та документи</a><a href="{% url 'analytics' %}" {% if request.resolver_match.url_name == 'analytics' %}aria-current="page"{% endif %}>Пробіг і пальне</a></nav>

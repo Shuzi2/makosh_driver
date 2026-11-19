@@ -57,6 +57,7 @@ services:
       - "127.0.0.1:${WEB_PORT:-8000}:8000"
     volumes:
       - uploads:/data/uploads
+      - ./backups/automatic:/backups:ro
     read_only: true
     tmpfs: [/tmp]
     security_opt: ["no-new-privileges:true"]
@@ -66,6 +67,24 @@ services:
       interval: 20s
       timeout: 5s
       retries: 5
+  maintenance:
+    build: .
+    image: makosh-fleet:local
+    restart: unless-stopped
+    environment: *app-env
+    command: ["python", "manage.py", "operations_worker"]
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+      db:
+        condition: service_healthy
+    volumes:
+      - uploads:/data/uploads:ro
+      - ./backups/automatic:/backups
+    read_only: true
+    tmpfs: [/tmp]
+    security_opt: ["no-new-privileges:true"]
+    cap_drop: [ALL]
 volumes:
   db_data:
   uploads:

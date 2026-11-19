@@ -9,9 +9,9 @@ DEBUG = os.environ.get("DJANGO_DEBUG", "0") == "1"
 ALLOWED_HOSTS = [x.strip() for x in os.environ.get("DJANGO_ALLOWED_HOSTS", "localhost,127.0.0.1,testserver").split(",") if x.strip()]
 CSRF_TRUSTED_ORIGINS = [x.strip() for x in os.environ.get("DJANGO_CSRF_TRUSTED_ORIGINS", "").split(",") if x.strip()]
 INSTALLED_APPS = ["django.contrib.auth", "django.contrib.contenttypes", "django.contrib.sessions", "django.contrib.messages", "django.contrib.staticfiles", "fleet"]
-MIDDLEWARE = ["django.middleware.security.SecurityMiddleware", "whitenoise.middleware.WhiteNoiseMiddleware", "django.contrib.sessions.middleware.SessionMiddleware", "django.middleware.common.CommonMiddleware", "django.middleware.csrf.CsrfViewMiddleware", "django.contrib.auth.middleware.AuthenticationMiddleware", "fleet.middleware.PasswordChangeMiddleware", "django.contrib.messages.middleware.MessageMiddleware", "django.middleware.clickjacking.XFrameOptionsMiddleware"]
+MIDDLEWARE = ["django.middleware.security.SecurityMiddleware", "fleet.middleware.LanSecureCookieMiddleware", "whitenoise.middleware.WhiteNoiseMiddleware", "django.contrib.sessions.middleware.SessionMiddleware", "django.middleware.common.CommonMiddleware", "django.middleware.csrf.CsrfViewMiddleware", "django.contrib.auth.middleware.AuthenticationMiddleware", "fleet.middleware.SessionActivityMiddleware", "fleet.middleware.PasswordChangeMiddleware", "fleet.permissions.DriverPermissionMiddleware", "django.contrib.messages.middleware.MessageMiddleware", "django.middleware.clickjacking.XFrameOptionsMiddleware"]
 ROOT_URLCONF = "config.urls"
-TEMPLATES = [{"BACKEND":"django.template.backends.django.DjangoTemplates", "DIRS":[BASE_DIR / "templates"], "APP_DIRS":True, "OPTIONS":{"context_processors":["django.template.context_processors.request", "django.contrib.auth.context_processors.auth", "django.contrib.messages.context_processors.messages"]}}]
+TEMPLATES = [{"BACKEND":"django.template.backends.django.DjangoTemplates", "DIRS":[BASE_DIR / "templates"], "APP_DIRS":True, "OPTIONS":{"context_processors":["django.template.context_processors.request", "django.contrib.auth.context_processors.auth", "django.contrib.messages.context_processors.messages", "fleet.context_processors.maps", "fleet.context_processors.attention"]}}]
 WSGI_APPLICATION = "config.wsgi.application"
 if os.environ.get("USE_SQLITE", "0") == "1":
     DATABASES = {"default":{"ENGINE":"django.db.backends.sqlite3", "NAME":os.environ.get("SQLITE_PATH", str(BASE_DIR / "local.sqlite3"))}}
@@ -29,6 +29,7 @@ STATICFILES_DIRS = [BASE_DIR / "static"]
 STORAGES = {"default":{"BACKEND":"django.core.files.storage.FileSystemStorage"}, "staticfiles":{"BACKEND":"whitenoise.storage.CompressedManifestStaticFilesStorage"}}
 MEDIA_ROOT = Path(os.environ.get("MEDIA_ROOT", str(BASE_DIR / "private-media")))
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
+BACKUP_ROOT = Path(os.environ.get('BACKUP_ROOT', '/backups'))
 LOGIN_URL = "/login/"
 LOGIN_REDIRECT_URL = "/"
 LOGOUT_REDIRECT_URL = "/login/"
@@ -52,3 +53,6 @@ X_FRAME_OPTIONS = "DENY"
 DATA_UPLOAD_MAX_MEMORY_SIZE = 22 * 1024 * 1024
 FILE_UPLOAD_MAX_MEMORY_SIZE = 1024 * 1024
 MAX_DOCUMENT_BYTES = 20 * 1024 * 1024
+MAP_GEOCODER_URL=os.environ.get('MAP_GEOCODER_URL','https://nominatim.openstreetmap.org/search')
+MAP_TILE_URL=os.environ.get('MAP_TILE_URL','https://tile.openstreetmap.org/{z}/{x}/{y}.png')
+MAP_TILE_ATTRIBUTION=os.environ.get('MAP_TILE_ATTRIBUTION','© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors')

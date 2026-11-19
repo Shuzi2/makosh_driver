@@ -1,0 +1,8 @@
+{% extends 'fleet/workspace.html' %}{% block content %}
+<div class="heading"><div><h1>Змінити причіп</h1><p>Тягач {{ vehicle.plate }} · Поточний причіп: {{ old_trailer|default:'не закріплено' }}</p></div><a class="btn" href="{% url 'dashboard' %}#vehicle-{{ vehicle.pk }}">← Автопарк</a></div>
+<form method="post" class="panel form-panel">{% csrf_token %}{{ form.previous_trailer }}{{ form.previous_trailer.errors }}{{ form.non_field_errors }}
+  {% if active_trip %}<p class="notice">Тягач виконує рейс №{{ active_trip.pk }}. Змінити причіп можна після завершення рейсу.</p>{% else %}<p class="notice">Оберіть наявний причіп. Якщо він закріплений за іншим вільним тягачем, його буде переведено сюди, а попередній тягач залишиться без причепа.</p>{% endif %}
+  {% include 'fleet/trip_field.html' with field=form.trailer %}<p><a href="{% url 'trailer_create' %}?vehicle={{ vehicle.pk }}">＋ Додати причіп до списку</a></p>{% include 'fleet/trip_field.html' with field=form.note %}
+  <p class="hint">Причіпи тягачів у рейсі недоступні для переведення. Дані завершених рейсів і водії в черзі не змінюються.</p>
+  <button class="btn primary" type="submit" {% if active_trip %}disabled{% endif %}>Зберегти причіп</button> <a class="btn" href="{% url 'dashboard' %}#vehicle-{{ vehicle.pk }}">Скасувати</a>
+</form>{% endblock %}

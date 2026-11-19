@@ -1,0 +1,236 @@
+/* Warm Mineral: paint-only overrides. Keep existing type, layout and hit areas. */
+.fleet-workspace {
+  --bg: #e2e4db;
+  --ink: #253a32;
+  --muted: #617067;
+  --line: #d6d4c8;
+  --green: #486653;
+  --mineral-surface: #faf7f1;
+  --mineral-border: #cbc9bb;
+  --mineral-shadow: 0 2px 4px #35403109, 0 5px 15px #35403108;
+  color: var(--ink);
+  background: radial-gradient(ellipse at 85% 0, #eeeae1a6, transparent 55%), var(--bg);
+  accent-color: #647b5c;
+}
+.fleet-workspace aside {
+  background: linear-gradient(120deg, #dce0d1, #d3dacb);
+  border-color: #c6cdbe;
+  box-shadow: inset -1px 0 #f7f6ee45;
+}
+.fleet-workspace .brand,
+.fleet-workspace .login-identity,
+.fleet-workspace .heading h1,
+.fleet-workspace h1,
+.fleet-workspace h2,
+.fleet-workspace h3,
+.fleet-workspace .truck-head b,
+.fleet-workspace .profile b { color: #263c32; }
+.fleet-workspace .brand-sub,
+.fleet-workspace .profile small,
+.fleet-workspace .muted,
+.fleet-workspace .hint,
+.fleet-workspace .helptext,
+.fleet-workspace .eyebrow,
+.fleet-workspace .fleet-total,
+.fleet-workspace .fleet-live-note { color: #5c6a60; }
+.fleet-workspace .profile { border-color: #bfc7b7; }
+.fleet-workspace .avatar { background: #c1cdb2; color: #34513a; }
+.fleet-workspace nav a { color: #34483c; }
+.fleet-workspace nav a:hover,
+.fleet-workspace nav a:focus-visible {
+  background: #e8e7da;
+  color: #293d31;
+  box-shadow: inset 3px 0 #9dafa0;
+}
+.fleet-workspace nav a.active,
+.fleet-workspace nav a.active:hover,
+.fleet-workspace nav a.active:focus-visible {
+  background: linear-gradient(110deg, #f2d8bf, #efd0b6);
+  color: #623e27;
+  box-shadow: inset 3px 0 #b9693c, inset 0 1px #fff2df80, 0 3px 8px #5d543b09;
+}
+.fleet-workspace .panel,
+.fleet-workspace .tablebox,
+.fleet-workspace .metric,
+.fleet-workspace .metric.highlight,
+.fleet-workspace .fleet-vehicle,
+.fleet-workspace .public .login {
+  background: linear-gradient(125deg, #fcf9f4, #f6f2eb);
+  border-color: var(--mineral-border);
+  box-shadow: inset 0 1px #fffdf9, var(--mineral-shadow);
+}
+.fleet-workspace .fleet-vehicle:hover {
+  background: linear-gradient(125deg, #fffaf4, #f8f4ed);
+  border-color: #a8b3a1;
+  box-shadow: inset 0 1px #fffdf9, 0 3px 12px #35403112;
+}
+.fleet-workspace .metric strong,
+.fleet-workspace .metric.highlight strong { color: #253b31; }
+.fleet-workspace .metric small,
+.fleet-workspace .metric span,
+.fleet-workspace .metric em { color: #53665a; }
+.fleet-workspace a.metric:hover { background: #f7eee2; border-color: #c6b298; }
+.fleet-workspace .metric.metric-warning,
+.fleet-workspace .attention,
+.fleet-workspace .fleet-attention { background: #f2e8d7; border-color: #d6bfa0; }
+.fleet-workspace .fleet-group-head { border-color: #adb7a1; }
+.fleet-workspace .fleet-group-count { background: #cfd8bf; color: #354b30; }
+.fleet-workspace .vehicle-facts,
+.fleet-workspace .card-bottom,
+.fleet-workspace .vehicle-queue,
+.fleet-workspace .vehicle-history-links,
+.fleet-workspace .queue-item,
+.fleet-workspace .document,
+.fleet-workspace .event { border-color: var(--line); }
+.fleet-workspace .vehicle-facts dt,
+.fleet-workspace .vehicle-pair small,
+.fleet-workspace .status-changed,
+.fleet-workspace .vehicle-status .status-changed,
+.fleet-workspace .vehicle-job p,
+.fleet-workspace .vehicle-job small,
+.fleet-workspace .queue-item small { color: #60695f; }
+.fleet-workspace .vehicle-facts dd,
+.fleet-workspace .vehicle-job .route,
+.fleet-workspace .route,
+.fleet-workspace .queue-heading b { color: #2b4135; }
+.fleet-workspace a,
+.fleet-workspace .link,
+.fleet-workspace .profile .link { color: #4b6653; }
+.fleet-workspace a:hover,
+.fleet-workspace .link:hover { color: #2d4a38; }
+.fleet-workspace .queue-heading a { color: #8b4d2d; }
+.fleet-workspace .btn {
+  background: linear-gradient(#f5eade, #ede0d0);
+  border-color: #d5c3ac;
+  color: #694d34;
+  box-shadow: inset 0 1px #fff8ed90, 0 2px 4px #60482906;
+}
+.fleet-workspace .btn.primary {
+  background: linear-gradient(115deg, #f1c5a5, #eab494);
+  border-color: #cb946f;
+  color: #5b361f;
+  box-shadow: inset 0 1px #ffe6cfbd, 0 3px 8px #8f5e3620;
+}
+.fleet-workspace .btn:hover { background: #e9dac6; color: #573c26; transform: none; }
+.fleet-workspace .btn.primary:hover { background: linear-gradient(115deg, #ecc09e, #e4a983); color: #503019; }
+.fleet-workspace .btn:active { box-shadow: inset 0 1px 3px #76503126; transform: none; }
+.fleet-workspace .btn:disabled { box-shadow: none; }
+.fleet-workspace .filters { background: #f3f1e9; border-color: var(--mineral-border); }
+.fleet-workspace input,
+.fleet-workspace select,
+.fleet-workspace textarea,
+.fleet-workspace .search,
+.fleet-workspace .fleet-toolbar .search {
+  background: #faf7f1;
+  border-color: #c6c5b6;
+  color: #2d4035;
+  box-shadow: inset 0 1px 2px #3a463207;
+}
+.fleet-workspace input::placeholder,
+.fleet-workspace textarea::placeholder { color: #74776c; }
+.fleet-workspace input:focus,
+.fleet-workspace select:focus,
+.fleet-workspace textarea:focus { border-color: #7c9176; background: #fffaf3; }
+.fleet-workspace :focus-visible { outline-color: #6c8463; }
+.fleet-workspace label { color: #4b5e4f; }
+.fleet-workspace input[type=file] { background: #f0f1e7; }
+.fleet-workspace th { background: #e7e9dd; color: #4b5e4b; }
+.fleet-workspace td { border-color: #dedcd0; color: #304236; }
+.fleet-workspace td small { color: #667061; }
+.fleet-workspace tbody tr:hover { background: #efeee3; }
+.fleet-workspace .badge.free,
+.fleet-workspace .badge.road,
+.fleet-workspace .badge.completed {
+  background: linear-gradient(#e1e9cc, #d2dfb8);
+  color: #355027;
+  box-shadow: inset 0 0 0 1px #acbf8b40;
+}
+.fleet-workspace .badge.loading,
+.fleet-workspace .badge.planned { background: #f2dbb7; color: #78501f; }
+.fleet-workspace .badge.unloading { background: #dfe7e7; color: #41606b; }
+.fleet-workspace .badge.queued { background: #e2e5ec; color: #4b6078; }
+.fleet-workspace .badge.cancelled { background: #f0ddd1; color: #88462f; }
+.fleet-workspace .notice,
+.fleet-workspace .assigned-vehicle,
+.fleet-workspace .trip-stop-card { background: #edf0e3; border-color: #d2dac6; color: #486044; }
+.fleet-workspace .trip-numbers>div { background: #f6f4ec; border-color: #dedbcf; }
+.fleet-workspace .message { background: #e0e8d4; border-color: #bdcba9; color: #3b5834; }
+.fleet-workspace .message.error { background: #f2dfd4; border-color: #d4ae98; color: #85472f; }
+.fleet-workspace .vehicle-menu summary,
+.fleet-workspace .edit-pencil,
+.fleet-workspace .dialog-close { background: #f1e9df; border-color: #dbccba; color: #5c6e5d; }
+.fleet-workspace .vehicle-menu summary:hover,
+.fleet-workspace .vehicle-menu[open] summary,
+.fleet-workspace .edit-pencil:hover,
+.fleet-workspace .dialog-close:hover { background: #e9dfcf; color: #344c37; transform: none; }
+.fleet-workspace .vehicle-menu-panel,
+.fleet-workspace .quick-edit-dialog,
+.fleet-workspace .document-viewer { background: #faf7f0; border-color: #c8c8b7; color: #2d4134; }
+.fleet-workspace .vehicle-menu-panel { box-shadow: 0 8px 24px #35403124; }
+.fleet-workspace .vehicle-menu-panel a:hover,
+.fleet-workspace .vehicle-menu-panel button:hover { background: #f0e1ce; }
+.fleet-workspace .quick-edit-dialog,
+.fleet-workspace .document-viewer { box-shadow: 0 24px 80px #26372c38; }
+.fleet-workspace dialog::backdrop { background: #29372c80; backdrop-filter: blur(3px); }
+.fleet-workspace dialog[open] { animation: mineral-dialog-in 180ms ease-out; }
+.fleet-workspace .trip-detail-page .panel { animation: none; }
+.fleet-workspace .document-viewer-canvas { background: #e0e3d7; border-color: #ccd1bf; }
+
+/* Driver surfaces retain their operational state colours and large controls. */
+.fleet-workspace.driver-mode { background: radial-gradient(ellipse at 100% 0, #eeeae0a6, transparent 65%), #e2e5da; }
+.fleet-workspace .driver-task,
+.fleet-workspace .driver-document-workspace,
+.fleet-workspace .driver-empty,
+.fleet-workspace .driver-history-selected,
+.fleet-workspace .driver-finish-reminder {
+  background: #faf7f1;
+  border-color: #c9cdbd;
+  box-shadow: inset 0 1px #fffdf8, var(--mineral-shadow);
+}
+.fleet-workspace .driver-task-action,
+.fleet-workspace .driver-trip-footer,
+.fleet-workspace .driver-doc-picker,
+.fleet-workspace .driver-saved-docs,
+.fleet-workspace .driver-history,
+.fleet-workspace .driver-next-list { background: #f1f2e9; border-color: #d1d6c4; }
+.fleet-workspace .driver-instruction,
+.fleet-workspace .driver-task>.stage-duration { background: #faf7f1; }
+.fleet-workspace .driver-settings summary,
+.fleet-workspace .driver-settings>div { background: #faf7f1; border-color: #c9cdbd; }
+.fleet-workspace .driver-settings a:hover,
+.fleet-workspace .driver-settings button:hover { background: #eee5d8; }
+.fleet-workspace.driver-mode .driver-bottom-nav {
+  background: #f8f6eef7;
+  border-color: #c9cdbd;
+  box-shadow: 0 -4px 18px #3540310d;
+}
+.fleet-workspace.driver-mode .driver-bottom-nav a { color: #52664f; }
+.fleet-workspace.driver-mode .driver-bottom-nav a.active {
+  background: linear-gradient(115deg, #f3d9bf, #efd0b4);
+  color: #674027;
+  box-shadow: inset 0 1px #fff6e7a0;
+}
+.fleet-workspace.driver-mode .driver-bottom-nav a:hover { background: #eae5d7; box-shadow: none; }
+.fleet-workspace.driver-mode .driver-bottom-nav a.active:hover { background: #efd0b4; }
+.fleet-workspace.driver-mode .driver-photo-button,
+.fleet-workspace .driver-small-button {
+  background: #efd7bd;
+  border-color: #d1b293;
+  color: #624529;
+}
+.fleet-workspace.driver-mode .driver-file-button { background: #f8f4ec; border-color: #c9cdb9; color: #52654a; }
+
+.fleet-workspace :is(.btn, .edit-pencil, .fleet-vehicle, a.metric, nav a, input, select, textarea, .vehicle-menu summary, .dialog-close, .driver-settings summary) {
+  transition: background-color 160ms ease, border-color 160ms ease, color 160ms ease, box-shadow 160ms ease;
+}
+@keyframes mineral-dialog-in {
+  from { opacity: 0; transform: scale(.985); }
+  to { opacity: 1; transform: scale(1); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .fleet-workspace *, .fleet-workspace *::before, .fleet-workspace *::after {
+    animation: none !important;
+    transition: none !important;
+    scroll-behavior: auto !important;
+  }
+}

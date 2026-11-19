@@ -1,0 +1,46 @@
+/* A photographic road joins the fleet scene to the sign-in area. */
+.fleet-workspace.login-screen .login-fleet-showcase { height:clamp(230px, 35vh, 430px); }
+.fleet-workspace.login-screen .public:before {
+  background:radial-gradient(ellipse 105% 65% at -20% 106%,transparent 57%,#ff7b3d64 57.3%,#ffb48a32 61%,transparent 67%),linear-gradient(165deg,#eef0f4 25%,#f8f8fa 60%,#eff0f3);
+}
+.fleet-workspace.login-screen .login-fleet-showcase:before {
+  inset:0 -4% 0; background:url('brand/login-road-curved.png') center / 100% 100% no-repeat;
+  -webkit-mask-image:linear-gradient(to bottom,#000 0%,#000 60%,rgba(0,0,0,.85) 72%,rgba(0,0,0,.38) 88%,transparent 100%);
+  mask-image:linear-gradient(to bottom,#000 0%,#000 60%,rgba(0,0,0,.85) 72%,rgba(0,0,0,.38) 88%,transparent 100%);
+  animation:login-landscape 25s linear infinite alternate;
+}
+.fleet-workspace.login-screen .login-fleet-showcase:after { opacity:.12; }
+.fleet-workspace.login-screen .login-road { background:transparent; box-shadow:none; transform:none; }
+.fleet-workspace.login-screen .login-road:before { display:none; }
+.fleet-workspace.login-screen .login-road:after { opacity:.25; }
+.fleet-workspace.login-screen .login-road-lines { opacity:0; }
+.fleet-workspace.login-screen .login-fleet-vehicle .fleet-motion-truck { animation:login-convoy-drive 3.8s ease-in-out infinite; }
+.fleet-workspace.login-screen .login-fleet-grain .fleet-motion-truck { animation-delay:-1.7s; }
+/* The independent wheel overlay no longer matches both truck images. */
+.fleet-workspace.login-screen .login-fleet-vehicle .fleet-wheel-layer { display:none; }
+.fleet-workspace.login-screen .login-fleet-vehicle .fleet-real-wheel { display:block; filter:none; }
+.fleet-workspace.login-screen .fleet-wheel-disk { transform-box:view-box; transform-origin:center; animation:login-rim-rotate 2.4s linear infinite; }
+@keyframes login-rim-rotate { to { transform:rotate(-360deg); } }
+@keyframes login-convoy-drive { 0%,100% { transform:translate3d(-4px,0,0); } 50% { transform:translate3d(4px,-2px,0); } }
+.fleet-workspace.login-screen .login-route-art { top:clamp(230px, 35vh, 430px); }
+.fleet-workspace.login-screen .login-route-art:before { background:none; }
+.fleet-workspace.login-screen .public .login {
+  position:relative; left:auto; top:auto; transform:none; margin:-8px 0 0;
+  animation:none;
+}
+@media (max-width:600px) {
+  .fleet-workspace.login-screen .login-fleet-showcase { height:clamp(150px,27vh,220px); }
+  .fleet-workspace.login-screen .login-fleet-showcase:before { background-position:center 60%; }
+  .fleet-workspace.login-screen .login-route-art { top:clamp(150px,27vh,220px); }
+  .fleet-workspace.login-screen .public .login { position:relative; top:auto; left:auto; transform:none; margin-top:-12px; }
+}
+@media (max-height:700px) {
+  .fleet-workspace.login-screen .login-fleet-showcase { height:clamp(105px,25vh,175px); }
+  .fleet-workspace.login-screen .login-route-art { top:clamp(105px,25vh,175px); }
+  .fleet-workspace.login-screen .public .login { position:relative; top:auto; left:auto; transform:none; margin-top:-8px; }
+}
+@media (prefers-reduced-motion:reduce) {
+  .fleet-workspace.login-screen :is(.login-fleet-showcase:before,.login-fleet-vehicle .fleet-motion-truck,.login-road-lines,.fleet-wheel-glint) { animation:none; }
+  .fleet-workspace.login-screen .fleet-wheel-disk { animation:none; }
+  .fleet-workspace.login-screen .login-fleet-vehicle .fleet-real-wheel { display:none; }
+}

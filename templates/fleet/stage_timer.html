@@ -1,0 +1,1 @@
+{% if trip.is_active and trip.status_changed_at %}<small class="stage-duration">На етапі · <span data-stage-since="{{ trip.status_changed_at|date:'c' }}">{{ trip.stage_elapsed_display }}</span></small>{% endif %}

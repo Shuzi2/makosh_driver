@@ -1,0 +1,125 @@
+/* M-TRUCK brandbook: visual tokens only; the existing page structure remains. */
+@font-face{font-family:'MTruck Manrope';src:url('brand/manrope-variable.ttf') format('truetype');font-weight:200 800;font-style:normal;font-display:swap}
+@font-face{font-family:'MTruck Mono';src:url('brand/jetbrains-mono-variable.ttf') format('truetype');font-weight:100 800;font-style:normal;font-display:swap}
+.fleet-workspace{--brand-orange:#ff5112;--brand-graphite:#20242a;--bg:#eef0f4;--ink:#20242a;--line:#e6e8ec;font-family:'MTruck Manrope','Segoe UI',sans-serif;color:#20242a;accent-color:#ff5112}
+.fleet-workspace :is(input,select,textarea){font-family:'MTruck Manrope','Segoe UI',sans-serif}
+.fleet-workspace :is(.vehicle-pair b,.status-changed time,.trip-point-time time){font-family:'MTruck Mono',Consolas,monospace;letter-spacing:0}
+.fleet-workspace :is(.cargo-brand strong,.driver-brand strong,.mtruck-login b){color:#000;font-weight:800;letter-spacing:.025em}
+.fleet-workspace :is(.cargo-brand strong,.driver-brand strong,.mtruck-login b) i{color:#ff5112;font-style:normal}
+.fleet-workspace .cargo-brand strong{min-width:92px}
+.fleet-workspace .btn.primary{background:#ff5112;border-color:#ff5112;color:#111}
+.fleet-workspace .btn.primary:hover{background:#e3480f;border-color:#e3480f;color:#111}
+.fleet-workspace :is(a,.link,.profile .link,.queue-heading a){color:#9f3108}
+.fleet-workspace a.btn.primary{color:#111}
+.fleet-workspace a.btn.primary:hover{color:#111}
+.fleet-workspace .app > aside nav[aria-label="Головна навігація"] a.active{color:#a73108;background:#fff1eb;box-shadow:inset 3px 0 #ff5112}
+.fleet-workspace .app > aside nav[aria-label="Головна навігація"] a.active .nav-icon{background:#ffe7db}
+.fleet-workspace .badge:is(.free,.completed){background:#e7f4e9;color:#255a2a}
+.fleet-workspace .badge:is(.loading,.unloading){background:#fff0e4;color:#8d4818}
+.fleet-workspace .badge.road{background:#e5f5ed;color:#255a2a}
+.fleet-workspace .badge:is(.planned,.queued){background:#e9edff;color:#3045a0}
+.fleet-workspace .badge.cancelled{background:#fae9e8;color:#a12d28}
+.fleet-workspace :focus-visible{outline-color:#ff5112}
+.fleet-workspace .cargo-header:after{background:linear-gradient(90deg,#ff5112,#f8d6c6,transparent)}
+@media(max-width:760px){.fleet-workspace .cargo-brand strong{min-width:74px}}
+
+/* Apply the same brand surfaces to administration, forms and route details. */
+.fleet-workspace .admin-nav{background:#f5f6f8;border-color:#e6e8ec}
+.fleet-workspace .admin-nav a[aria-current="page"]{background:#fff1eb;color:#9f3108;box-shadow:inset 0 -2px #ff5112}
+.fleet-workspace .admin-workspace .panel{background:#fff;border-color:#e6e8ec}
+.fleet-workspace :is(.roles-heading-icon,.resource-icon,.ux-icon){background:#fff1eb}
+.fleet-workspace :is(.admin-metrics>div,.admin-metrics .resource-card,.ux-sidecard,.cargo-role-group){background:#f7f8fa;border-color:#e6e8ec}
+.fleet-workspace .cargo-choice:has(input:checked){background:#fff6f1;border-color:#ff5112}
+.fleet-workspace :is(.cargo-form-field input,.ux-field input,.ux-field select,.ux-field textarea):focus{border-color:#ff5112;box-shadow:0 0 0 3px #ffede5}
+.fleet-workspace .admin-status-succeeded{background:#e7f4e9;color:#255a2a}
+.fleet-workspace .admin-status-failed{background:#fae9e8;color:#9e3029}
+.fleet-workspace .admin-status-running{background:#fff0e4;color:#87501b}
+.fleet-workspace :is(.trip-row-open,.trip-row-edit){background:#fff;border-color:#e0e3e8;color:#923109}
+.fleet-workspace :is(.trip-row-open,.trip-row-edit):hover{background:#fff4ee;border-color:#f2c6af;color:#7c2808}
+.fleet-workspace :is(.trip-route-more,.trip-row-chevron,.trip-address-kind){color:#96370f}
+.fleet-workspace .trip-address-kind.is-unload{color:#255a2a}
+.fleet-workspace .trip-route-arrow{color:#ff5112}
+.fleet-workspace :is(.route-point-form,.route-totals,.maintenance-due,.saved-place-picker){background:#f7f8fa;border-color:#e6e8ec}
+.fleet-workspace .route-number{background:#fff1eb;color:#a43c11}
+.fleet-workspace .route-stop.is-current{background:#fff8f4;border-color:#f0cab7}
+.fleet-workspace .route-stop.is-current>.route-number{background:#ff5112;color:#111}
+.fleet-workspace .workspace-tabs a{background:#fff;border-color:#e6e8ec;color:#454e58}
+.fleet-workspace .workspace-tabs a[aria-current]{background:#fff1eb;color:#9f3108;border-color:#f0c2aa}
+.fleet-workspace :is(.saved-place-contact,.feature-note){background:#f7f8fa;color:#4f5b65}
+.fleet-workspace .maintenance-card.state-overdue{border-left-color:#b43c32}
+.fleet-workspace .maintenance-card.state-soon{border-left-color:#d3882e}
+.fleet-workspace .maintenance-card.state-overdue .maintenance-status{background:#fae9e8;color:#9e3029}
+.fleet-workspace .maintenance-card.state-soon .maintenance-status{background:#fff0e4;color:#87501b}
+.fleet-workspace .maintenance-card.state-unknown .maintenance-status{background:#edf0f4;color:#4f5e70}
+
+/* Driver controls retain their existing status distinctions and dimensions. */
+.fleet-workspace.driver-mode{background:#eef0f4;color:#20242a}
+.fleet-workspace.driver-mode :is(.driver-task,.driver-document-workspace,.driver-empty,.driver-finish-reminder){background:#fff;border-color:#e6e8ec}
+.fleet-workspace.driver-mode :is(.driver-task-action,.driver-saved-docs,.driver-trip-footer,.driver-doc-picker){background:#f7f8fa;border-color:#e6e8ec}
+.fleet-workspace.driver-mode :is(.driver-settings a,.driver-settings button,.driver-action){font-family:'MTruck Manrope','Segoe UI',sans-serif}
+.fleet-workspace.driver-mode .driver-stop{border-left-color:#d8dee4}
+.fleet-workspace.driver-mode .driver-stop-dot{border-color:#ff5112}
+.fleet-workspace.driver-mode .driver-stop:last-child .driver-stop-dot{background:#ff5112}
+.fleet-workspace.driver-mode .driver-stop>p{color:#20242a}
+.fleet-workspace.driver-mode .driver-bottom-nav a.active{background:#fff1eb;color:#9f3108}
+
+/* Remaining workspaces: color and contrast only, without changing dimensions. */
+.fleet-workspace .new-trip-workspace :is(.create-assignment,.create-point){background:#fff;border-color:#e1e4e8}
+.fleet-workspace .new-trip-workspace .create-route-editor{background:#f7f8fa;border-color:#e3e6ea}
+.fleet-workspace .new-trip-workspace :is(.create-route-overview,.create-general-notes){background:#f7f8fa;border-color:#e3e6ea}
+.fleet-workspace .new-trip-workspace .create-save-bar{background:#fffffff2;border-color:#e1e4e8}
+.fleet-workspace .new-trip-workspace :is(input:not([type=checkbox]):not([type=radio]),select,textarea){background:#fff;border-color:#d6dbe2;color:#20242a}
+.fleet-workspace .new-trip-workspace :is(input,select,textarea):focus{background:#fff;border-color:#ff5112}
+.fleet-workspace .new-trip-workspace :is(label,.create-point-identity b,.create-route-overview b,.create-save-bar p b){color:#303942}
+.fleet-workspace .new-trip-workspace :is(.helptext,.create-section-note,.create-point-identity small,.create-save-bar p span){color:#626d77}
+.fleet-workspace .new-trip-workspace .create-point .route-number{background:#fff1eb;color:#a43c11}
+.fleet-workspace .new-trip-workspace .create-point[data-stop-kind="unload"] .route-number{background:#e7f4e9;color:#255a2a}
+.fleet-workspace .new-trip-workspace .create-point .location-field{background:#f7f8fa;border-color:#e3e6ea}
+.fleet-workspace .new-trip-workspace .create-route-editor .route-add-actions>.btn{background:#fff;border-color:#e0e3e8;color:#923109}
+.fleet-workspace .new-trip-workspace .create-route-editor .route-add-actions>.btn:hover{background:#fff4ee;border-color:#f2c6af}
+.fleet-workspace :is(.location-field,.location-picker,.location-map-panel){border-color:#e2e5e9}
+.fleet-workspace :is(.attention-group,.attention-trip){border-color:#e6e8ec}
+.fleet-workspace .attention-group summary:hover{background:#fff6f1}
+
+/* Driver document cards keep their status labels and upload behavior. */
+.fleet-workspace.driver-mode :is(.docs-trip,.docs-upload-card,.docs-archive-card){background:#fff;border-color:#e1e5e9}
+.fleet-workspace.driver-mode :is(.docs-kind-picker,.docs-old-trips){background:#f7f8fa;border-color:#e1e5e9}
+.fleet-workspace.driver-mode .docs-point{background:#fff;border-color:#e1e5e9}
+.fleet-workspace.driver-mode .docs-point.selected{background:#fff6f1;border-color:#e97748;box-shadow:inset 0 0 0 1px #e97748}
+.fleet-workspace.driver-mode .docs-point.selected small{color:#91390f}
+.fleet-workspace.driver-mode :is(.docs-point b,.docs-archive-route){color:#26313b}
+.fleet-workspace.driver-mode .docs-upload-card .driver-photo-button{background:#fff1eb;border-color:#efb89b;color:#87300b}
+.fleet-workspace.driver-mode .docs-upload-card .driver-file-button{background:#fff;border-color:#d9dee4;color:#303942}
+.fleet-workspace.driver-mode :is(.docs-file,.docs-old-trips){border-color:#e1e5e9}
+
+/* Fleet, attention inbox and reports use the same neutral and brand surfaces. */
+.fleet-workspace .fleet-vehicle .vehicle-job{background:#f7f8fa;border-color:#e6e8ec}
+.fleet-workspace .fleet-vehicle .vehicle-job.idle{background:#f8f9fa;border-color:#e6e8ec}
+.fleet-workspace .fleet-vehicle :is(.vehicle-section-label,.vehicle-job p,.queue-item small){color:#596671}
+.fleet-workspace .fleet-vehicle :is(.fleet-job-route,.vehicle-job .route){color:#20242a}
+.fleet-workspace .fleet-vehicle :is(.vehicle-queue,.vehicle-history-links,.queue-item){border-color:#e6e8ec}
+.fleet-workspace .fleet-attention{background:#fff8f4;border-color:#f0d4c5}
+.fleet-workspace .attention-group{background:#fff;border-color:#e6e8ec}
+.fleet-workspace .attention-group summary b{background:#fff1eb;color:#92390e}
+.fleet-workspace .attention-overview{background:linear-gradient(110deg,#fff8f4,#f7f8fa);border-color:#eadfd9}
+.fleet-workspace .attention-overview strong{color:#20242a}
+.fleet-workspace .attention-overview :is(p,small){color:#596671}
+.fleet-workspace .attention-overview-dot{background:#ff5112;box-shadow:0 0 0 6px #ff51121a}
+.fleet-workspace .attention-tabs{border-color:#e6e8ec}
+.fleet-workspace .attention-tabs a.selected{background:#fff1eb;color:#923109}
+.fleet-workspace .attention-category-grid a{background:#fff;border-color:#e1e5e9;color:#3d4852}
+.fleet-workspace .attention-category-grid a b{color:#303942}
+.fleet-workspace .attention-category-grid a.selected{background:#fff6f1;border-color:#e97748;box-shadow:inset 0 0 0 1px #e97748}
+.fleet-workspace .attention-category-grid a:hover{background:#fff8f4}
+.fleet-workspace .attention-issue{background:#fff;border-color:#e1e5e9}
+.fleet-workspace .attention-issue h3 a{color:#20242a}
+.fleet-workspace :is(.attention-issue-context,.attention-skip-details[open],.attention-skip-record,.attention-empty){background:#f7f8fa;border-color:#e1e5e9;color:#4f5b65}
+.fleet-workspace .attention-issue-actions{border-color:#e6e8ec}
+.fleet-workspace :is(.attention-search label,.attention-issue-hint,.attention-explainer){color:#596671}
+.fleet-workspace .report-filters{background:#fff;border-color:#e1e5e9}
+.fleet-workspace .report-filter-actions{border-color:#e6e8ec}
+.fleet-workspace :is(.report-metrics .metric,.feature-metrics .metric){background:#fff;border-color:#e1e5e9}
+.fleet-workspace :is(.report-metrics .metric strong,.feature-metrics .metric strong){color:#20242a}
+.fleet-workspace .analytics-filter-more summary{color:#923109}
+.fleet-workspace .report-edit-form input[type=checkbox]{accent-color:#ff5112}
+.fleet-workspace :is(.document-viewer,.quick-edit-dialog){background:#fff;border-color:#e1e5e9;color:#20242a}

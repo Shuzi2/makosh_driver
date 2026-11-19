@@ -1,93 +1,141 @@
-from django.apps import apps
-from django.test import TestCase, Client, override_settings
-from fleet.models import User, AuditEvent
+from unittest.mock import patch
+
+from django.test import Client, TestCase, override_settings
+from django.urls import reverse
+from django.utils import timezone
+
+from fleet.models import AuditEvent, OperationJob, OperationsSettings, Trip, User, Vehicle
 
 
-@override_settings(SECURE_SSL_REDIRECT=False, SESSION_COOKIE_SECURE=False, CSRF_COOKIE_SECURE=False,
-                   STORAGES={"default": {"BACKEND": "django.core.files.storage.FileSystemStorage"},
-                             "staticfiles": {"BACKEND": "django.contrib.staticfiles.storage.StaticFilesStorage"}})
+@override_settings(SECURE_SSL_REDIRECT=False, SESSION_COOKIE_SECURE=False, CSRF_COOKIE_SECURE=False, STORAGES={'default': {'BACKEND': 'django.core.files.storage.FileSystemStorage'}, 'staticfiles': {'BACKEND': 'django.contrib.staticfiles.storage.StaticFilesStorage'}})
 class AdministrationTests(TestCase):
     @classmethod
     def setUpTestData(cls):
-        cls.admin = User.objects.create_user('+380501234001', 'Testing-Password-2026!', full_name='Адміністратор', role='admin', must_change_password=False)
-        cls.staff = User.objects.create_user('+380501234002', 'Testing-Password-2026!', full_name='Логіст', role='logistic', must_change_password=False)
-        cls.driver = User.objects.create_user('+380501234003', 'Testing-Password-2026!', full_name='Водій', role='driver', must_change_password=False)
-        cls.manager = User.objects.create_user('+380501234004', 'Testing-Password-2026!', full_name='Керівник', role='manager', must_change_password=False)
+        cls.admin = User.objects.create_user('+380501234561', 'Test-Password-986!', role='admin', full_name='Логіст', must_change_password=False)
+        cls.driver = User.objects.create_user('+380501234562', 'Test-Password-986!', full_name='Водій', must_change_password=False)
+        cls.superuser = User.objects.create_superuser('+380501234563', 'Test-Password-986!', full_name='Суперкористувач')
 
-    def test_admin_hub_groups_management_links(self):
+    def setUp(self):
         self.client.force_login(self.admin)
-        response = self.client.get('/administration/')
+
+    def test_resource_metrics_endpoint_is_admin_only_and_not_cached(self):
+        url=reverse('admin_metrics_data')
+        self.client.force_login(self.driver)
+        self.assertEqual(self.client.get(url).status_code,403)
+        self.client.force_login(self.admin)
+        with patch('fleet.administration.operations.resource_metrics',return_value={'rows':[],'scope':'Docker VM'}):
+            response=self.client.get(url)
+        self.assertEqual(response.status_code,200)
+        self.assertEqual(response.json()['scope'],'Docker VM')
+        self.assertIsNotNone(timezone.datetime.fromisoformat(response.json()['sampled_at']))
+        self.assertIn('no-store',response['Cache-Control'])
+
+    def test_read_pages_are_admin_only(self):
+        for name in ['admin_overview', 'admin_journal', 'admin_roles', 'admin_maintenance']:
+            self.client.logout()
+            self.assertEqual(self.client.get(reverse(name)).status_code, 302)
+            self.client.force_login(self.driver)
+            self.assertEqual(self.client.get(reverse(name)).status_code, 403)
+        self.client.force_login(self.admin)
+        with patch('fleet.administration.operations.resource_metrics', return_value={'rows': [], 'scope': 'Docker'}):
+            for name in ['admin_overview', 'admin_journal', 'admin_roles', 'admin_maintenance']:
+                self.assertEqual(self.client.get(reverse(name)).status_code, 200)
+
+    def test_mutations_require_post_and_csrf(self):
+        urls = [reverse('admin_role_update', args=[self.driver.pk]), reverse('admin_backup_now'), reverse('admin_cleanup_now')]
+        for url in urls:
+            self.assertEqual(self.client.get(url).status_code, 405)
+        secured = Client(enforce_csrf_checks=True)
+        secured.force_login(self.admin)
+        for url in urls + [reverse('admin_maintenance')]:
+            self.assertEqual(secured.post(url, {'role': 'admin', 'confirm': 'yes'}).status_code, 403)
+        self.client.force_login(self.driver)
+        for url in urls + [reverse('admin_maintenance')]:
+            self.assertEqual(self.client.post(url, {'role': 'admin', 'confirm': 'yes'}).status_code, 403)
+
+    def test_role_change_is_audited_and_guards_own_and_superuser(self):
+        self.client.post(reverse('admin_role_update', args=[self.driver.pk]), {'role': 'admin'})
+        self.driver.refresh_from_db()
+        self.assertEqual(self.driver.role, 'admin')
+        self.assertTrue(AuditEvent.objects.filter(actor=self.admin, action='Змінено роль користувача').exists())
+        for account in [self.admin, self.superuser]:
+            self.client.post(reverse('admin_role_update', args=[account.pk]), {'role': 'driver'})
+            account.refresh_from_db()
+            self.assertEqual(account.role, 'admin')
+
+    def test_role_rejects_unknown_value_and_assigned_driver(self):
+        url = reverse('admin_role_update', args=[self.driver.pk])
+        self.client.post(url, {'role': 'owner'})
+        self.driver.refresh_from_db()
+        self.assertEqual(self.driver.role, 'driver')
+        Vehicle.objects.create(plate='ADMIN1', trailer_plate='ADMIN2', kind='tent', default_driver=self.driver)
+        self.client.post(url, {'role': 'admin'})
+        self.driver.refresh_from_db()
+        self.assertEqual(self.driver.role, 'driver')
+
+    def test_vehicle_assignment_rechecks_driver_after_form_validation(self):
+        from fleet.forms import VehicleForm
+        original = VehicleForm.is_valid
+        def promote_after_validation(form):
+            valid = original(form)
+            if valid:
+                User.objects.filter(pk=self.driver.pk).update(role='admin')
+            return valid
+        with patch.object(VehicleForm, 'is_valid', promote_after_validation):
+            response = self.client.post(reverse('vehicle_create'), {
+                'plate': 'RACE1', 'trailer_plate': 'RACE2', 'kind': 'tent',
+                'default_driver': self.driver.pk,
+            })
         self.assertEqual(response.status_code, 200)
-        for url in ['/accounts/', '/password/', '/administration/places/', '/administration/activity/']:
-            self.assertContains(response, 'href="' + url + '"')
-        home = self.client.get('/')
-        self.assertContains(home, 'Адмін панель')
-        nav = home.content.decode().split('<nav>')[1].split('</nav>')[0]
-        self.assertNotIn('/accounts/', nav)
-        self.assertNotIn('/password/', nav)
+        self.assertFalse(Vehicle.objects.filter(plate='RACE1').exists())
 
-    def test_nonadmins_cannot_read_or_write_administration(self):
-        self.assertEqual(self.client.get('/administration/').status_code, 302)
-        for user in [self.staff, self.driver, self.manager]:
-            self.client.force_login(user)
-            for url in ['/administration/', '/administration/places/', '/administration/places/new/', '/administration/activity/']:
-                self.assertEqual(self.client.get(url).status_code, 403)
-                self.assertEqual(self.client.post(url, {'name': 'Forbidden', 'address': 'Forbidden'}).status_code, 403)
-            home = self.client.get('/')
-            self.assertNotContains(home, 'Адмін панель')
-            self.assertContains(home, 'href="/password/"')
+    def test_role_rejects_active_and_queued_trips(self):
+        vehicle = Vehicle.objects.create(plate='ADMIN3', trailer_plate='ADMIN4', kind='tent')
+        trip = Trip.objects.create(vehicle=vehicle, driver=self.driver, origin='Київ', destination='Львів', cargo='Вантаж', planned_tons=10, planned_date=timezone.localdate(), created_by=self.admin)
+        for status in ['planned', 'queued']:
+            trip.status = status
+            trip.save()
+            self.client.post(reverse('admin_role_update', args=[self.driver.pk]), {'role': 'admin'})
+            self.driver.refresh_from_db()
+            self.assertEqual(self.driver.role, 'driver')
 
-    def test_saved_place_create_edit_archive_and_trip_suggestions(self):
-        self.client.force_login(self.admin)
-        data = {'name': 'Склад Любомль', 'address': 'Любомль, Складська 1', 'notes': 'Вхід №2', 'is_active': 'on'}
-        response = self.client.post('/administration/places/new/', data)
-        self.assertEqual(response.status_code, 302)
-        place = apps.get_model('fleet', 'SavedPlace').objects.get()
-        self.client.force_login(self.staff)
-        self.assertContains(self.client.get('/trips/new/'), '<option value="Любомль, Складська 1">Склад Любомль</option>', html=True)
-        self.assertEqual(self.client.post(f'/administration/places/{place.pk}/edit/', data).status_code, 403)
-        self.client.force_login(self.admin)
-        data.update(address='Любомль, Складська 2')
-        self.assertEqual(self.client.post(f'/administration/places/{place.pk}/edit/', data).status_code, 302)
-        place.refresh_from_db()
-        self.assertEqual(place.address, data['address'])
-        data.pop('is_active')
-        self.client.post(f'/administration/places/{place.pk}/edit/', data)
-        place.refresh_from_db()
-        self.assertFalse(place.is_active)
-        self.client.force_login(self.staff)
-        self.assertNotContains(self.client.get('/trips/new/'), '<option value="Любомль, Складська 2">')
-        self.assertTrue(AuditEvent.objects.filter(action='Додано збережене місце').exists())
-        self.assertTrue(AuditEvent.objects.filter(action='Оновлено збережене місце').exists())
+    def test_settings_validate_and_audit(self):
+        settings = OperationsSettings.objects.get_or_create(pk=1)[0]
+        data = {'backup_enabled': 'on', 'backup_time': '04:15', 'backup_keep': '21', 'cleanup_enabled': 'on', 'cleanup_days': '120'}
+        self.assertEqual(self.client.post(reverse('admin_maintenance'), data).status_code, 302)
+        settings.refresh_from_db()
+        self.assertEqual(settings.backup_keep, 21)
+        self.assertEqual(settings.cleanup_days, 120)
+        self.assertEqual(settings.backup_time.strftime('%H:%M'), '04:15')
+        self.assertTrue(AuditEvent.objects.filter(action='Змінено налаштування обслуговування').exists())
+        for field, value in [('cleanup_days', '89'), ('backup_keep', '0'), ('backup_keep', '91'), ('backup_time', '25:00')]:
+            self.assertEqual(self.client.post(reverse('admin_maintenance'), {**data, field: value}).status_code, 200)
+        settings.refresh_from_db()
+        self.assertEqual(settings.cleanup_days, 120)
+        self.assertEqual(settings.backup_keep, 21)
 
-    def test_place_validation_and_escape(self):
-        self.client.force_login(self.admin)
-        self.assertEqual(self.client.get('/administration/places/').status_code, 200)
-        model = apps.get_model('fleet', 'SavedPlace')
-        response = self.client.post('/administration/places/new/', {'name': '', 'address': ''})
-        self.assertEqual(response.status_code, 200)
-        self.assertEqual(model.objects.count(), 0)
-        data = {'name': '<script>bad()</script>', 'address': 'X' * 181}
-        self.client.post('/administration/places/new/', data)
-        self.assertEqual(model.objects.count(), 0)
-        data['address'] = 'Вінниця'
-        self.client.post('/administration/places/new/', data)
-        response = self.client.get('/administration/places/')
-        self.assertContains(response, '&lt;script&gt;bad()&lt;/script&gt;')
-        self.assertNotContains(response, '<script>bad()</script>')
-        self.client.post('/administration/places/new/', data)
-        self.assertEqual(model.objects.count(), 1)
+    @patch('fleet.administration.operations.queue_job')
+    def test_manual_jobs_and_cleanup_confirmation(self, queue):
+        self.client.post(reverse('admin_backup_now'))
+        queue.assert_called_once_with('backup', user=self.admin)
+        queue.reset_mock()
+        self.client.post(reverse('admin_cleanup_now'))
+        queue.assert_not_called()
+        self.client.post(reverse('admin_cleanup_now'), {'confirm': 'yes'})
+        queue.assert_called_once_with('cleanup', user=self.admin)
 
-    def test_saved_places_require_csrf(self):
-        client = Client(enforce_csrf_checks=True)
-        client.force_login(self.admin)
-        self.assertEqual(client.post('/administration/places/new/', {'name': 'X', 'address': 'Y'}).status_code, 403)
+    def test_journal_search_and_pagination_preserve_filters(self):
+        AuditEvent.objects.bulk_create([AuditEvent(actor=self.admin, action='Змінено роль', detail=str(i)) for i in range(42)])
+        AuditEvent.objects.create(actor=self.admin, action='Інша дія')
+        response = self.client.get(reverse('admin_journal'), {'q': 'Змінено', 'page': '2'})
+        self.assertEqual(len(response.context['page_obj']), 2)
+        self.assertNotIn('Інша дія', [entry.action for entry in response.context['page_obj']])
+        self.assertEqual(self.client.get(reverse('admin_journal'), {'date_from': 'invalid'}).context['page_obj'].paginator.count, 0)
 
-    def test_activity_is_readonly_and_recent_first(self):
-        self.client.force_login(self.admin)
-        AuditEvent.objects.create(actor=self.admin, action='Тестова дія', detail='<unsafe>')
-        response = self.client.get('/administration/activity/')
-        self.assertEqual(response.status_code, 200)
-        self.assertContains(response, 'Тестова дія')
-        self.assertContains(response, '&lt;unsafe&gt;')
-        self.assertEqual(self.client.post('/administration/activity/').status_code, 405)
+    def test_missing_backup_is_404_and_download_is_admin_only(self):
+        job = OperationJob.objects.create(kind='backup', status='succeeded', artifact='missing')
+        url = reverse('admin_backup_download', args=[job.pk])
+        with patch('fleet.administration.operations.backup_path', side_effect=ValueError('invalid')):
+            self.assertEqual(self.client.get(url).status_code, 404)
+        self.client.force_login(self.driver)
+        self.assertEqual(self.client.get(url).status_code, 403)

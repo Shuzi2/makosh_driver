@@ -1,0 +1,9 @@
+<section class="panel driver-insights"><div class="driver-insights-head"><div><h2>Аналітика за період</h2><p>Архів і рейси сайту показані окремо: деякі записи можуть описувати той самий рейс.</p></div></div>
+<div class="insight-columns">
+{% for label, data in insight_groups %}<article class="insight-group"><div class="insight-title"><h3>{{ label }}</h3><span>{{ data.count }} записів</span></div><div class="insight-grid">
+<div><small>Дохід на кілометр</small><strong>{{ data.revenue_per_km|floatformat:2|default:'—' }} <em>грн/км</em></strong><span>За {{ data.revenue_km_count }} рейсами з ціною та пробігом</span></div>
+<div><small>Маржа</small><strong>{{ data.margin|floatformat:1|default:'—' }} <em>%</em></strong><span>За {{ data.margin_count }} рейсами з ціною та прибутком</span></div>
+<div><small>Витрата пального</small><strong>{{ data.fuel_rate|floatformat:1|default:'—' }} <em>л/100 км</em></strong><span>За {{ data.fuel_count }} рейсами з літрами та пробігом</span></div>
+<div><small>Збиткові рейси</small><strong>{{ data.loss_count }} <em>із {{ data.profit_count }}</em></strong><span>Без прибутку: {{ data.missing_profit }}</span></div>
+</div></article>{% endfor %}
+</div><p class="insight-note">Показники на кілометр і витрата пального зважені за пробігом; маржа — відношення сум прибутку й ціни лише для заповнених рейсів. В архіві використано значення таблиці, зокрема колонку AB; позначені розбіжності не виправлялись.</p></section>

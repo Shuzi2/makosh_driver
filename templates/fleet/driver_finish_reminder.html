@@ -1,0 +1,16 @@
+{% extends 'base.html' %}{% block content %}
+<section class="driver-finish-reminder">
+  <span class="driver-reminder-icon" aria-hidden="true">!</span>
+  <h1>Підписаної ТТН ще немає</h1>
+  <p>Можливо, забули додати фото? Якщо документ уже підписали, надішліть його зараз.</p>
+  <p class="driver-reminder-route">Рейс №{{ trip.pk }} · {{ trip.origin }} → {{ trip.destination }}</p>
+  <a class="driver-action next-completed" href="{% url 'driver_documents' %}?trip={{ trip.pk }}&amp;kind=signed_ttn">Додати підписану ТТН</a>
+  <form data-driver-action data-sync-url="{% url 'driver_action' trip.pk %}" data-revision="{{ trip.updated_at|date:'c' }}" method="post" action="{% url 'trip_status' trip.pk %}">{% csrf_token %}
+    <input type="hidden" name="action" value="status"><input type="hidden" name="status" value="completed">
+    <input type="hidden" name="confirm_without_signed_ttn" value="1">
+    <button class="driver-action driver-finish-later" type="submit">Завершити й надіслати пізніше</button>
+  </form>
+  <p class="driver-reminder-help">Рейс ще не завершено. Без підписаної ТТН він залишиться жовтим в історії.</p>
+  <a class="driver-back" href="{% url 'trip_detail' trip.pk %}">← Повернутися до рейсу</a>
+</section>
+{% endblock %}

@@ -1,0 +1,27 @@
+{% extends 'fleet/admin_base.html' %}{% load static %}{% block admin_content %}
+<section class="panel account-create-page cargo-create">
+<a href="{% url 'accounts' %}" class="account-create-back">← Усі користувачі</a>
+<div class="roles-heading"><div class="roles-heading-icon"><img src="{% static 'cargo-icons/users.svg' %}" alt=""></div><div><h2>Новий користувач</h2><p>Додайте людину до команди та оберіть її роль.</p></div></div>
+{% if invite_result %}<div class="notice" role="status">{{ invite_result }}</div>{% endif %}{% if temporary %}<div class="notice secret" role="status"><b>Користувача створено. Тимчасовий пароль:</b><code>{{ temporary }}</code>Передайте пароль особисто. Після першого входу користувач має його змінити.</div>{% elif not invite_result %}
+<form method="post" class="cargo-create-form">{% csrf_token %}
+{{ form.non_field_errors }}
+<div class="cargo-create-toolbar"><p>Заповніть дані та оберіть, як користувач отримає доступ.</p><div><a class="btn" href="{% url 'accounts' %}">Скасувати</a><button class="btn primary" type="submit">Створити користувача</button></div></div>
+<div class="cargo-create-columns">
+  <div class="cargo-create-details">
+    <fieldset class="cargo-form-group"><legend>Особисті дані</legend>
+      {{ form.full_name }}{{ form.full_name.errors }}<div class="cargo-contact-grid"><div class="cargo-form-field"><label for="{{ form.surname.id_for_label }}">Прізвище <span aria-hidden="true">*</span></label>{{ form.surname }}{{ form.surname.errors }}</div><div class="cargo-form-field"><label for="{{ form.given_name.id_for_label }}">Ім’я <span aria-hidden="true">*</span></label>{{ form.given_name }}{{ form.given_name.errors }}</div><div class="cargo-form-field"><label for="{{ form.patronymic.id_for_label }}">По батькові</label>{{ form.patronymic }}{{ form.patronymic.errors }}</div></div>
+    </fieldset>
+    <fieldset class="cargo-form-group"><legend>Вхід і контакти</legend>
+      <div class="cargo-contact-grid"><div class="cargo-form-field"><label for="{{ form.phone.id_for_label }}">Телефон <span aria-hidden="true">*</span></label>{{ form.phone }}{{ form.phone.errors }}<p>Номер використовується для входу.</p></div>
+      <div class="cargo-form-field"><label for="{{ form.email.id_for_label }}">Електронна пошта</label>{{ form.email }}{{ form.email.errors }}<p>Потрібна для запрошення на пошту.</p></div></div>
+    </fieldset>
+  </div>
+  <fieldset class="cargo-form-group cargo-role-group"><legend>Роль і доступ</legend>{{ form.role.errors }}
+    {% for value,label in form.fields.role.choices %}{% if value %}<label class="cargo-choice"><input type="radio" name="role" value="{{ value }}" {% if form.role.value == value %}checked{% endif %} required><span class="cargo-choice-body"><strong>{{ label }}</strong><small>{% if value == 'admin' %}Повний доступ до всіх розділів і налаштувань.{% elif value == 'moderator' %}Робота з автопарком, рейсами й документами згідно з правами.{% else %}Доступ до власних рейсів і документів згідно з правами.{% endif %}</small></span></label>{% endif %}{% endfor %}
+  </fieldset>
+</div>
+<fieldset class="cargo-form-group cargo-access-group"><legend>Як передати доступ</legend>{{ form.access_method.errors }}<div class="cargo-access-options">
+  {% for value,label in form.fields.access_method.choices %}<label class="cargo-choice cargo-access-choice"><input type="radio" name="access_method" value="{{ value }}" {% if form.access_method.value == value or not form.access_method.value and value == 'password' %}checked{% endif %} required><span class="cargo-choice-body"><strong>{% if value == 'invite' %}Запрошення з посиланням{% else %}Тимчасовий пароль{% endif %}</strong><small>{% if value == 'invite' %}Лист із одноразовим посиланням надійде на пошту. Користувач сам встановить пароль; посилання діє 3 доби. Потрібна налаштована SMTP-пошта.{% else %}Система згенерує пароль для особистої передачі. Під час першого входу користувач змінить його на власний.{% endif %}</small></span></label>{% endfor %}
+</div></fieldset>
+</form>{% endif %}
+</section>{% endblock %}

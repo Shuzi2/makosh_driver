@@ -1,0 +1,5 @@
+{% extends 'fleet/admin_base.html' %}{% block admin_content %}
+<section class="panel"><h2>Журнал дій</h2><p class="muted">Історія операцій зберігається й не видаляється автоматичним очищенням.</p><form method="get" class="admin-filters">{{ form.as_p }}<button class="btn primary" type="submit">Застосувати</button><a href="{% url 'admin_journal' %}">Скинути</a></form></section>
+<p class="muted">Знайдено записів: {{ page_obj.paginator.count }}</p><div class="tablebox admin-table admin-section"><table><thead><tr><th>Час (Київ)</th><th>Користувач</th><th>Дія</th><th>Подробиці</th></tr></thead><tbody>{% for entry in page_obj %}<tr><td>{{ entry.created_at|date:'d.m.Y H:i:s' }}</td><td>{{ entry.actor.full_name|default:'Система / видалений користувач' }}</td><td>{{ entry.action }}{% if entry.trip_id %}<small><a href="{% url 'trip_detail' entry.trip_id %}">Рейс №{{ entry.trip_id }}</a></small>{% endif %}</td><td class="admin-job-message">{{ entry.detail|default:'—' }}</td></tr>{% empty %}<tr><td colspan="4" class="empty">Записів за цими умовами немає.</td></tr>{% endfor %}</tbody></table></div>
+{% include 'fleet/admin_pagination.html' %}{% endblock %}
+

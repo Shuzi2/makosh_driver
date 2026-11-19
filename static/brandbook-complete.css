@@ -1,0 +1,131 @@
+/* Final brandbook pass: visual properties only; page geometry stays intact. */
+.fleet-workspace{--brand-orange:#ff5112;--brand-ink:#20242a;--brand-muted:#596671;--brand-line:#e1e5e9;--brand-surface:#f7f8fa}
+.fleet-workspace :is(.panel,.tablebox,.metric,.fleet-vehicle,.ux-surface,.accounts-panel,.accounts-vehicles){border-color:var(--brand-line)}
+.fleet-workspace :is(.heading h1,h1,h2,h3,.vehicle-facts dd,.account-person b,.permission-copy strong){color:var(--brand-ink)}
+.fleet-workspace :is(.eyebrow,.hint,.helptext,.muted,.trip-section-kicker,.create-eyebrow,.attention-eyebrow){color:var(--brand-muted)}
+.fleet-workspace :is(.form-panel,.report-filters,.filters,.admin-workspace .panel,.saved-place-card,.maintenance-card){background:#fff;border-color:var(--brand-line)}
+.fleet-workspace :is(.form-panel,.report-filters,.admin-workspace,.feature-form-grid) :is(input:not([type=checkbox]):not([type=radio]):not([type=file]),select,textarea){background:#fff;border-color:#d6dce3;color:var(--brand-ink)}
+.fleet-workspace :is(.form-panel,.report-filters,.admin-workspace,.feature-form-grid) :is(input,select,textarea):focus{border-color:var(--brand-orange)}
+.fleet-workspace :is(.tablebox,.admin-table,.accounts-table) th{background:#f5f6f8;color:#424d57;border-color:var(--brand-line)}
+.fleet-workspace :is(.tablebox,.admin-table,.accounts-table) td{border-color:#e8ebee}
+.fleet-workspace :is(.tablebox,.admin-table,.accounts-table) tbody tr:hover{background:#fff8f4}
+.fleet-workspace :is(.accounts-filter-group,.account-role,.roles-role,.ux-badge,.permission-icon){background:#f3f5f7;border-color:#e6e8ec;color:#4d5963}
+.fleet-workspace .accounts-filter-group a.selected{background:#fff;color:#96370f}
+.fleet-workspace :is(.account-avatar,.roles-heading-icon,.permission-icon,.ux-icon,.resource-icon){background:#fff1eb}
+.fleet-workspace :is(.cargo-choice,.cargo-form-group,.ux-group,.ux-switch-row){border-color:#e1e5e9}
+.fleet-workspace .cargo-choice:has(input:checked){background:#fff6f1;border-color:#e97748}
+.fleet-workspace :is(.saved-place-contact,.maintenance-due,.feature-note,.route-totals,.report-filter-actions){border-color:#e1e5e9}
+.fleet-workspace :is(.saved-place-contact,.maintenance-due,.feature-note,.route-totals){background:#f7f8fa;color:#4f5b65}
+.fleet-workspace :is(.location-field,.location-picker,.location-map-panel,.settlement-results){border-color:#e1e5e9}
+.fleet-workspace :is(.vehicle-queue,.vehicle-history-links,.queue-item,.document,.event,.trip-history,.report-filter-actions){border-color:#e6e8ec}
+.fleet-workspace :is(.fleet-vehicle,.metric,.admin-metrics>div,.attention-issue,.saved-place-card,.maintenance-card){box-shadow:0 1px 3px #20242a0d}
+.fleet-workspace :is(.trip-ttn-status.is-uploaded,.admin-status-succeeded){background:#e7f4e9;color:#255a2a}
+.fleet-workspace :is(.trip-ttn-status.is-missing,.admin-status-running){background:#fff0e4;color:#87501b}
+.fleet-workspace :is(.admin-status-failed,.state-overdue .maintenance-status){background:#fae9e8;color:#9e3029}
+.fleet-workspace :is(.trip-route-arrow,.fleet-point-number.is-current){color:#ff5112}
+.fleet-workspace :is(.driver-settings summary,.driver-settings>div,.driver-task,.driver-document-workspace,.docs-upload-card,.docs-archive-card){border-color:#e1e5e9}
+.fleet-workspace.driver-mode :is(.driver-doc-picker,.driver-saved-docs,.driver-trip-footer,.docs-kind-picker,.docs-old-trips){background:#f7f8fa;border-color:#e1e5e9}
+.fleet-workspace.driver-mode :is(.driver-page-title,.driver-stop>p,.docs-point b,.docs-archive-route){color:#20242a}
+.fleet-workspace.driver-mode :is(.driver-action,.driver-small-button,.driver-settings button,.driver-settings a){font-family:'MTruck Manrope','Segoe UI',sans-serif}
+.fleet-workspace.driver-mode :is(.driver-back,.driver-map,.driver-docs-link,.docs-trip-meta>a){color:#923109}
+.fleet-workspace.driver-mode .driver-file-input:focus-visible{outline-color:#ff5112}
+.fleet-workspace :is(.cargo-header-action,.admin-nav a,.app>aside nav a,.btn,.trip-row-open,.trip-row-edit):focus-visible{outline-color:#ff5112}
+@media(prefers-reduced-motion:reduce){.fleet-workspace :is(.admin-nav a,.app>aside nav a,.btn){transition:none}}
+
+/* Uploaded TTN coverage in the dispatcher's current-trip card. */
+.fleet-workspace .fleet-ttn-summary{margin:12px 0;padding:11px;border:1px solid #e1e5e9;border-radius:10px;background:#fff}
+.fleet-workspace .fleet-ttn-heading{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:8px;font-size:11px}
+.fleet-workspace .fleet-ttn-heading b{color:#26313b}
+.fleet-workspace .fleet-ttn-heading a{font-size:11px;font-weight:700}
+.fleet-workspace .fleet-ttn-row{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:5px 0;font-size:11px;color:#4f5b65}
+.fleet-workspace .fleet-ttn-state{flex-shrink:0;padding:4px 7px;border-radius:6px;text-align:right;font-size:10px;line-height:1.35}
+.fleet-workspace .fleet-ttn-state.is-complete{background:#e7f4e9;color:#255a2a}
+.fleet-workspace .fleet-ttn-state.is-partial{background:#fff1e1;color:#87501b}
+.fleet-workspace .fleet-ttn-state.is-missing{background:#f1f3f5;color:#586572}
+@media(max-width:360px){.fleet-workspace .fleet-ttn-row{flex-wrap:wrap}.fleet-workspace .fleet-ttn-state{text-align:left}}
+.ttn-notifications{position:relative}.ttn-notifications-button{position:relative;list-style:none;cursor:pointer;font-size:19px}.ttn-notifications-button::-webkit-details-marker{display:none}.ttn-notifications-button b{position:absolute;right:-5px;top:-5px;min-width:19px;height:19px;padding:2px 4px;border-radius:20px;color:#fff;background:#ff5112;font:700 10px/15px sans-serif;text-align:center}.ttn-notifications-panel{position:absolute;right:0;top:calc(100% + 10px);width:min(360px,calc(100vw - 24px));max-height:min(70vh,560px);overflow:auto;background:white;border:1px solid #e1e5e9;border-radius:14px;box-shadow:0 14px 38px #1a202c24;z-index:100}.ttn-notifications-panel header{position:sticky;top:0;display:grid;gap:4px;padding:15px;background:white;border-bottom:1px solid #edf0f2}.ttn-notifications-panel header small,.ttn-notifications-panel p{color:#77828c;font-size:12px}.ttn-notifications-panel p{padding:0 15px}.ttn-notice{display:grid;gap:4px;padding:13px 15px;border-bottom:1px solid #edf0f2;color:#263238;text-decoration:none;white-space:normal}.ttn-notice:hover,.ttn-notice.is-unread{background:#fff5ee}.ttn-notice strong{font-size:13px}.ttn-notice span,.ttn-notice time{font-size:12px;color:#6c7881}.ttn-notice.is-unread strong:before{content:"●";color:#ff5112;margin-right:7px}
+.ttn-notice-toast{position:fixed;right:20px;bottom:20px;z-index:110;padding:14px 18px;border:1px solid #f2ded3;border-radius:12px;background:#fff8f3;color:#703a1a;box-shadow:0 10px 30px #1a202c20;font-size:13px;font-weight:700}
+.trip-expense-row{display:flex;justify-content:space-between;gap:16px;padding:14px 0;border-bottom:1px solid #e8eaee}.trip-expense-row>div{display:grid;gap:5px}.trip-expense-row small{color:#78838b}.trip-expense-row a{font-size:12px}.driver-operation-form{margin-top:16px}.driver-operation-form form p{display:grid;gap:6px}.driver-operation-form :is(input,select,textarea){width:100%;min-height:44px}.driver-operation-form button{margin-top:12px}
+.ttn-control-points{display:grid;gap:12px;margin-top:16px}.ttn-control-point{padding:14px;border:1px solid #e6e8eb;border-radius:12px;background:#fafbfc}.ttn-control-point-heading{display:flex;align-items:center;justify-content:space-between;gap:8px}.ttn-control-address{font-size:12px;line-height:1.45;color:#6b7580;overflow-wrap:anywhere;margin:8px 0 12px}.ttn-control-upload{width:100%;text-align:center}.ttn-control-original{display:grid;gap:8px;margin-top:12px;padding-top:12px;border-top:1px solid #e6e8eb;font-size:12px}.ttn-control-original form{margin:0}.ttn-control-original .btn{width:100%}.ttn-control>form{margin-top:8px}
+.fleet-workspace .fleet-group-icon{display:inline-flex;align-items:center;justify-content:center;flex:0 0 42px;width:42px;height:28px;border-radius:8px;background:#fff1e9}.fleet-workspace .fleet-group-icon img{display:block;width:36px;height:21px;object-fit:contain;transition:transform .22s ease}.fleet-workspace .fleet-group-head:hover .fleet-group-icon img{transform:translateX(2px)}@media(prefers-reduced-motion:reduce){.fleet-workspace .fleet-group-icon img{transition:none}.fleet-workspace .fleet-group-head:hover .fleet-group-icon img{transform:none}}
+/* Operational polish: preserve the existing workspace and card geometry. */
+.fleet-workspace .fleet-vehicle{border-radius:16px;box-shadow:0 2px 8px #20242a0a;transition:border-color .2s ease,box-shadow .2s ease}
+.fleet-workspace .fleet-vehicle:hover,.fleet-workspace .fleet-vehicle:focus-within{border-color:#d5dce0;box-shadow:0 8px 24px #20242a10}
+.fleet-workspace .vehicle-facts dd{color:#20242a;line-height:1.45;overflow-wrap:anywhere}
+.fleet-workspace .vehicle-queue .queue-item{display:grid;gap:6px;margin-top:10px;padding:11px 12px;border:1px solid #e3e7e9;border-radius:10px;background:#fafbfc;text-decoration:none;transition:background-color .18s ease,border-color .18s ease}
+.fleet-workspace .vehicle-queue .queue-item:hover{background:#fff8f4;border-color:#f0c9b6}
+.fleet-workspace .queue-item .queue-item-meta{color:#626d76;font-size:11px;font-weight:700}
+.fleet-workspace .queue-item .queue-item-route{color:#303a41;line-height:1.48;overflow-wrap:anywhere}
+.fleet-workspace .queue-item .queue-item-driver{color:#3d4b54;font-size:12px}
+.fleet-workspace .queue-item .queue-item-state{color:#80502f;font-size:11px;line-height:1.45}
+.fleet-workspace .vehicle-queue-choice{background:#fff;border-color:#e1e5e9;transition:border-color .18s ease,box-shadow .18s ease}
+.fleet-workspace .vehicle-queue-choice:focus-within{border-color:#e89b78;box-shadow:0 0 0 3px #ff511219}
+.fleet-workspace .vehicle-queue-choice label{min-height:36px;line-height:1.4;color:#303a41}
+.fleet-workspace :is(.ux-field input,.ux-field select,.ux-field textarea):focus-visible{outline:2px solid #d9460e;outline-offset:2px;border-color:#d9460e}
+.fleet-workspace :is(.ttn-notifications-panel,.driver-notifications-panel,.vehicle-menu-panel){transform-origin:top right}
+@media(prefers-reduced-motion:no-preference){.fleet-workspace :is(.ttn-notifications[open] .ttn-notifications-panel,.driver-notifications[open] .driver-notifications-panel,.vehicle-menu[open] .vehicle-menu-panel){animation:mtruck-panel-in .18s ease-out both}@keyframes mtruck-panel-in{from{opacity:0;transform:translateY(-5px)}to{opacity:1;transform:translateY(0)}}}
+@media(prefers-reduced-motion:reduce){.fleet-workspace :is(.fleet-vehicle,.queue-item,.vehicle-queue-choice){transition:none!important}.fleet-workspace :is(.ttn-notifications-panel,.driver-notifications-panel,.vehicle-menu-panel){animation:none!important}}
+@media(max-width:600px){.fleet-workspace .vehicle-queue .queue-item{padding:12px}.fleet-workspace .vehicle-queue-choice label{min-height:44px}}
+
+/* Clear operational hierarchy and calm interaction feedback. */
+.fleet-workspace:not(.driver-mode) .fleet-metrics .metric{border-radius:15px;background:linear-gradient(145deg,#fff 70%,#fff7f2);box-shadow:0 2px 9px #20242a0b}
+.fleet-workspace:not(.driver-mode) .fleet-metrics .metric strong{color:#20242a;font-size:26px;line-height:1.1}
+.fleet-workspace .fleet-group-head{border-bottom:1px solid #dce1e5;padding-bottom:12px}
+.fleet-workspace .fleet-group-head h2{letter-spacing:-.02em}
+.fleet-workspace .fleet-vehicle{border-color:#dfe4e8;background:#fff}
+.fleet-workspace .fleet-vehicle .vehicle-pair small,.fleet-workspace .fleet-vehicle .vehicle-facts dt{color:#66737d}
+.fleet-workspace .fleet-vehicle .vehicle-pair b{color:#17212a;font-weight:800}
+.fleet-workspace .fleet-vehicle .vehicle-job{border-color:#e4e8eb;background:#f8f9fa}
+.fleet-workspace .fleet-vehicle .vehicle-job.idle{background:#f8f9fa}
+.fleet-workspace .fleet-vehicle .queue-heading{align-items:center}
+.fleet-workspace .fleet-vehicle .queue-heading a{padding:4px 7px;border-radius:7px;background:#fff2eb;color:#aa390c;font-weight:700}
+.fleet-workspace .fleet-vehicle .queue-heading a:hover{background:#ffe8db}
+.fleet-workspace .fleet-vehicle .vehicle-history-links a{border-radius:5px;text-decoration:none;font-weight:600}
+.fleet-workspace .fleet-vehicle .vehicle-history-links a:hover{text-decoration:underline;text-underline-offset:3px}
+.fleet-workspace:not(.driver-mode) :is(.btn,.cargo-header-action,.vehicle-menu summary){transition:background-color .2s ease,border-color .2s ease,box-shadow .2s ease}
+.fleet-workspace:not(.driver-mode) .btn.primary:hover{box-shadow:0 5px 14px #cc481c30}
+.fleet-workspace:not(.driver-mode) :is(.cargo-header-action,.vehicle-menu summary):hover{border-color:#efc4b1;background:#fff5ef;color:#a83a0d}
+.fleet-workspace :is(.btn,.cargo-header-action,.vehicle-menu summary,.queue-heading a):focus-visible{outline:2px solid #c8410d;outline-offset:3px}
+@media(prefers-reduced-motion:reduce){.fleet-workspace:not(.driver-mode) :is(.btn,.cargo-header-action,.vehicle-menu summary){transition:none!important}}
+
+.fleet-workspace .fleet-vehicle[hidden]{display:none!important}
+.fleet-workspace .trip-driver-messages{margin-top:18px;padding:20px 22px}
+.fleet-workspace .driver-message-heading{display:flex;align-items:center;gap:12px;margin-bottom:14px}
+.fleet-workspace .driver-message-icon{display:grid;place-items:center;flex:none;width:38px;height:38px;border-radius:12px;background:#fff1e8;color:#c54c17;font-size:20px}
+.fleet-workspace .driver-message-heading h2{margin:0;font-size:17px;line-height:1.3}
+.fleet-workspace .driver-message-heading p{margin:3px 0 0;color:#73808a;font-size:12px}
+.fleet-workspace .driver-message-list{display:grid;gap:8px}
+.fleet-workspace .driver-message{padding:12px 13px;border:1px solid #efe5d8;border-radius:10px;background:#fffaf5;overflow-wrap:anywhere}
+.fleet-workspace .driver-message-meta{display:flex;align-items:baseline;justify-content:space-between;flex-wrap:wrap;gap:4px 10px}
+.fleet-workspace .driver-message-meta strong{color:#62432c;font-size:13px}
+.fleet-workspace .driver-message-meta time{color:#7c858b;font-size:11px;white-space:nowrap}
+.fleet-workspace .driver-message-driver{margin:5px 0 0;color:#718078;font-size:11px}
+.fleet-workspace .driver-message-comment{margin:8px 0 0;color:#303a41;font-size:13px;line-height:1.5;white-space:normal}
+.fleet-workspace .driver-message-history{display:inline-block;margin-top:12px;font-size:12px;font-weight:700}
+.fleet-workspace .fleet-vehicle .vehicle-queue .queue-item{gap:9px;padding:11px 12px;background:#fafbfc;border-color:#e7e9ec;transition:border-color .18s ease,box-shadow .18s ease,background-color .18s ease}
+.fleet-workspace .fleet-vehicle .vehicle-queue .queue-item:hover{background:#fffaf7;border-color:#f0c9b6;box-shadow:0 3px 12px #20242a0b}
+.fleet-workspace .fleet-vehicle .vehicle-queue .queue-item.is-pending{background:#f3f4f5;border-color:#e0e4e7}
+.fleet-workspace .fleet-vehicle .vehicle-queue .queue-item.is-pending:hover{background:#ebedef;border-color:#cbd2d6}
+.fleet-workspace .fleet-vehicle .vehicle-queue .queue-item.is-accepted{background:#eff8f1;border-color:#c9e4d0}
+.fleet-workspace .fleet-vehicle .vehicle-queue .queue-item.is-accepted:hover{background:#e7f5ea;border-color:#a8d2b3}
+.fleet-workspace .fleet-vehicle .queue-item.is-accepted .queue-item-state{color:#287348}
+.fleet-workspace .fleet-vehicle .queue-item:focus-visible{outline:2px solid #c8410d;outline-offset:3px}
+.fleet-workspace .fleet-vehicle .queue-item .queue-item-top{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.fleet-workspace .fleet-vehicle .queue-item .queue-item-meta{color:#b64313;font-weight:700}
+.fleet-workspace .fleet-vehicle .queue-item .queue-item-date{color:#6c7882;font-weight:500;white-space:nowrap}
+.fleet-workspace .fleet-vehicle .queue-item .queue-item-route{display:grid;gap:7px;position:relative;padding-left:15px}
+.fleet-workspace .fleet-vehicle .queue-item .queue-item-route:before{content:'';position:absolute;left:3px;top:8px;bottom:8px;width:1px;background:#d7ded6}
+.fleet-workspace .fleet-vehicle .queue-item .queue-route-point{position:relative;display:block;font-weight:400;line-height:1.4}
+.fleet-workspace .fleet-vehicle .queue-item .queue-route-point:before{content:'';position:absolute;left:-15px;top:5px;width:7px;height:7px;border-radius:50%;background:#fff;border:2px solid #64926d}
+.fleet-workspace .fleet-vehicle .queue-item .queue-route-point.is-destination:before{border-color:#df7c3a}
+.fleet-workspace .fleet-vehicle .queue-item .queue-route-point small{color:#718078;font-size:10px;line-height:1.25}
+.fleet-workspace .fleet-vehicle .queue-item .queue-route-point>span{color:#303a41;font-size:12px;font-weight:600;line-height:1.4;overflow-wrap:anywhere}
+.fleet-workspace .fleet-vehicle .queue-item .queue-item-footer{display:grid;gap:2px;padding-top:7px;border-top:1px solid #eaedef;font-weight:400}
+.fleet-workspace .fleet-vehicle .queue-item .queue-item-driver{color:#48565f;font-size:11px}
+.fleet-workspace .fleet-vehicle .queue-item .queue-item-state{color:#7a6a59;font-size:10px;line-height:1.4}
+@media(prefers-reduced-motion:reduce){.fleet-workspace .fleet-vehicle .vehicle-queue .queue-item{transition:none}}
+.fleet-workspace:not(.driver-mode) .fleet-metrics button.metric{width:100%;text-align:left;font:inherit;cursor:pointer;transition:border-color .18s ease,box-shadow .18s ease,transform .18s ease}
+.fleet-workspace:not(.driver-mode) .fleet-metrics button.metric:hover{border-color:#e9aa8e;transform:translateY(-2px)}
+.fleet-workspace:not(.driver-mode) .fleet-metrics button.metric[aria-pressed="true"]{border-color:#e65a20;box-shadow:0 0 0 2px #f7d3c3}
+.fleet-workspace:not(.driver-mode) .fleet-metrics button.metric:focus-visible{outline:2px solid #c8410d;outline-offset:3px}
+@media(prefers-reduced-motion:reduce){.fleet-workspace:not(.driver-mode) .fleet-metrics button.metric{transition:none}}

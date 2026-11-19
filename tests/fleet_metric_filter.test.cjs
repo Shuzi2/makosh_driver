@@ -1,0 +1,20 @@
+const test=require('node:test');
+const assert=require('node:assert/strict');
+const fs=require('node:fs');
+const vm=require('node:vm');
+const script=fs.readFileSync('static/app.js','utf8');
+const source=script.slice(script.indexOf('let fleetFilter='),script.indexOf('// Do not cache private pages'));
+test('metric filters combine with search and toggle off',()=>{
+  const cards=[{dataset:{fleetState:'active'},textContent:'АВ1 рейс'},{dataset:{fleetState:'free'},textContent:'АВ2 вільний'},{dataset:{fleetState:'repair'},textContent:'АВ3 ремонт'}];
+  const buttons=['active','free','repair'].map(value=>({dataset:{fleetFilter:value},setAttribute(k,v){this[k]=v},closest(){return this}}));
+  const empty={hidden:true,textContent:''};
+  const group={querySelectorAll(){return cards},querySelector(){return empty}};
+  const search={value:'',addEventListener(name,fn){this.input=fn}};
+  const metrics={querySelectorAll(){return buttons},contains(){return true},addEventListener(name,fn){this.click=fn}};
+  const document={querySelector(){return metrics},querySelectorAll(s){return s==='.searchable'?cards:[group]}};
+  vm.runInNewContext(source,{document,search});
+  metrics.click({target:buttons[0]});assert.deepEqual(cards.map(c=>c.hidden),[false,true,true]);assert.equal(buttons[0]['aria-pressed'],'true');
+  search.value='АВ2';search.input();assert.ok(cards.every(c=>c.hidden));assert.equal(empty.hidden,false);
+  metrics.click({target:buttons[0]});assert.deepEqual(cards.map(c=>c.hidden),[true,false,true]);
+  search.value='';search.input();metrics.click({target:buttons[2]});assert.deepEqual(cards.map(c=>c.hidden),[true,true,false]);
+});

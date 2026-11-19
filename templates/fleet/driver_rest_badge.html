@@ -1,0 +1,1 @@
+{% if resting_driver.rest_started_at %}<div class="driver-rest-badge"><b>Ⅱ Відпочиває</b><span>з {{ resting_driver.rest_started_at|date:'d.m H:i' }} · <span data-stage-since="{{ resting_driver.rest_started_at|date:'c' }}">щойно</span></span></div>{% endif %}

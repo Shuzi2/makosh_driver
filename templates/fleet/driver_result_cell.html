@@ -1,0 +1,1 @@
+<td class="sheet-result-readonly" data-result="{{ cell.key }}" title="Розрахункове значення">{% if cell.kind == 'live' %}{{ cell.value|floatformat:2|default:'—' }}{% else %}{{ cell.value|default_if_none:'—' }}{% endif %}</td>

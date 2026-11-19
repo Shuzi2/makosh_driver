@@ -1,0 +1,9 @@
+{% extends 'fleet/workspace.html' %}{% load static %}
+{% block title %}Потребує уваги · M TRANS{% endblock %}
+{% block extra_css %}<link rel="stylesheet" href="{% static 'attention.css' %}">{% endblock %}
+{% block content %}
+<div class="heading attention-page-heading"><div><span class="attention-eyebrow">КОНТРОЛЬ РЕЙСІВ</span><h1>Потребує уваги</h1><p>Усі питання в одному місці — від підтвердження водієм до документів.</p></div><a class="btn" href="{% url 'trip_list' %}">Усі рейси ↗</a></div>
+<form class="attention-search" method="get" role="search"><input type="hidden" name="tab" value="{% if skipped %}skipped{% endif %}"><input type="hidden" name="category" value="{{ category }}"><label for="attention-search">Знайти питання</label><div><input id="attention-search" name="q" type="search" value="{{ query }}" placeholder="Маршрут, водій, тягач, причіп або № рейсу"><button class="btn" type="submit">Знайти</button></div></form>
+<p class="attention-connection" data-attention-error role="status" hidden>Не вдалося оновити список. Перевіряємо підключення…</p>
+<div data-attention-inbox data-live-url="{{ request.get_full_path }}">{% include 'fleet/attention_content.html' %}</div>
+{% endblock %}

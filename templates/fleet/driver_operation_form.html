@@ -1,0 +1,6 @@
+{% extends 'base.html' %}
+{% block content %}
+<a class="driver-back" href="{% url 'trip_detail' trip.pk %}">← До рейсу №{{ trip.pk }}</a>
+<section class="panel driver-operation-form"><h1>{{ title }}</h1><p class="hint">{{ description }}</p>
+<form method="post" enctype="multipart/form-data">{% csrf_token %}{{ form.as_p }}<button class="driver-action next-loading" type="submit">{{ submit_label }}</button></form></section>
+{% endblock %}
