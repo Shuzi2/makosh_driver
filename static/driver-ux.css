@@ -98,3 +98,10 @@
   .fleet-workspace.driver-mode .driver-notice-item{animation:driver-soft-enter .18s ease-out both}
   @keyframes driver-soft-enter{from{opacity:0;transform:translateY(-4px)}to{opacity:1;transform:translateY(0)}}
 }
+
+/* Prevent overlays from capturing taps after the native disclosure closes. */
+.fleet-workspace.driver-mode :is(.driver-notifications:not([open]) > .driver-notifications-panel,.driver-settings:not([open]) > div){display:none!important}
+/* Respect the camera and home indicator on edge-to-edge iPhone screens. */
+.fleet-workspace.driver-mode .driver-topbar{padding-top:calc(12px + env(safe-area-inset-top, 0px))}
+.fleet-workspace.driver-mode .driver-bottom-nav{padding-bottom:max(14px, env(safe-area-inset-bottom, 0px))}
+.fleet-workspace.driver-mode .driver-shell{padding-bottom:calc(94px + env(safe-area-inset-bottom, 0px))}

@@ -129,11 +129,13 @@ def process_deliveries(limit=30):
             or not job.recipient.is_active or job.recipient.role!='driver'
             or (job.trip_id and job.trip.driver_id!=job.recipient_id) or not valid_endpoint(sub.endpoint)):
             PushDelivery.objects.filter(pk=job.pk).update(status='discarded');continue
-        labels={'assignment':('Новий рейс','Вам призначено рейс. Відкрийте кабінет, щоб переглянути.'),
+        labels={'assignment':('Новий рейс','Відкрийте кабінет, перегляньте завдання та прийміть рейс.'),
                 'trip_change':('Зміни в рейсі','Логіст оновив рейс. Перевірте подробиці в кабінеті.'),
                 'cancelled':('Рейс скасовано','Логіст скасував рейс. Перегляньте повідомлення в кабінеті.'),
                 'service':('Оновлення сервісу','Логіст оновив ваше звернення. Відкрийте сервіс, щоб переглянути.')}
         title,body=labels.get(job.kind,('Повідомлення','Відкрийте кабінет водія.'))
+        if job.kind == 'assignment' and job.trip_id:
+            title=f'Новий рейс №{job.trip_id}'
         target=reverse('driver_service') if job.kind=='service' else reverse('dashboard')
         try:
             webpush(subscription_info={'endpoint':sub.endpoint,'keys':{'p256dh':sub.p256dh,'auth':sub.auth}},

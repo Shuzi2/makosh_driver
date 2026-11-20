@@ -1,5 +1,5 @@
 {% extends 'fleet/workspace.html' %}
-{% load static %}{% block extra_css %}<link rel="stylesheet" href="{% static 'routes.css' %}"><link rel="stylesheet" href="{% static 'fleet-card-preview.css' %}?v=5">{% endblock %}{% block content %}
+{% load static %}{% block extra_css %}<link rel="stylesheet" href="{% static 'routes.css' %}"><link rel="stylesheet" href="{% static 'fleet-card-preview.css' %}?v=6">{% endblock %}{% block content %}
 <div class="heading"><div><h1>{% if fleet_kind == 'tent' %}Тенти{% elif fleet_kind == 'grain' %}Зерновози{% else %}Автопарк{% endif %}</h1><p class="fleet-total">Усього авто: <span data-fleet-vehicle-count>{{ vehicle_count }}</span></p></div><a class="btn primary" href="{% url 'trip_create' %}">＋ Новий рейс</a></div>
 <div id="fleet-metrics">{% include "fleet/dashboard_metrics.html" %}</div>
 <p class="fleet-live-note" data-fleet-live-status role="status"></p>

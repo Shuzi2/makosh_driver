@@ -44,7 +44,12 @@ class DriverPushTests(TestCase):
             process_deliveries()
         sender.assert_called_once()
         self.assertEqual(PushDelivery.objects.get().status,'sent')
+        payload=json.loads(sender.call_args.kwargs['data'])
+        self.assertIn(f'№{self.trip.pk}',payload['title'])
+        self.assertIn('прийміть',payload['body'].lower())
+        self.assertEqual(payload['url'],reverse('dashboard'))
         self.assertNotIn(self.driver.full_name,sender.call_args.kwargs['data'])
+        self.assertNotIn(self.vehicle.plate,sender.call_args.kwargs['data'])
 
     def test_changes_and_service_reply_queue_for_the_driver(self):
         self.subscribe()

@@ -85,6 +85,52 @@ def live_financial_totals(trips):
         if result.get('profit') is not None: totals['complete']+=1
     return totals
 
+PERIOD_TOTAL_FIELDS = [
+    ('kilometers', 'Пробіг', 'км'), ('days', 'Днів за рейсами', 'дн.'), ('fuel_litres', 'Витрачено пального', 'л'),
+    ('revenue', 'Ціна рейсів', 'грн'), ('wage', 'Оплата водія / бонус', 'грн'),
+    ('fuel_cost', 'Витрати на пальне', 'грн'), ('adblue_cost', 'Витрати на AdBlue', 'грн'),
+    ('depreciation_cost', 'Амортизація і кредит', 'грн'), ('extra_cost', 'Додаткові витрати', 'грн'),
+    ('expenses', 'Загальні витрати', 'грн'), ('profit', 'Прибуток', 'грн'),
+]
+
+def period_totals(history, trips):
+    """Sum recorded additive values, preserving missing values and separate sources."""
+    from .management.commands.import_driver_reports import number
+    def summarize(rows):
+        result = {}
+        for key, label, unit in PERIOD_TOTAL_FIELDS:
+            values = [row.get(key) for row in rows]
+            known = [value for value in values if value is not None]
+            result[key] = {'key': key, 'value': sum(known, Decimal('0')) if known else None,
+                           'known': len(known), 'missing': len(values) - len(known), 'label': label, 'unit': unit}
+        return result
+    archived = []
+    for row in history:
+        values = row.source_values | row.report_corrections
+        raw_ab = next((item.get('value') for item in (row.display_values or {}).get('extra_columns', []) if item.get('column') == 'AB'), None)
+        corrected = archive_prices_corrected(row)
+        archived.append({
+            'kilometers': number(values.get('kilometers')), 'days': number(values.get('days')), 'fuel_litres': number(raw_ab),
+            'revenue': number(values.get('revenue')), 'wage': number(values.get('driver_cost')),
+            'fuel_cost': None if corrected else number(values.get('fuel_cost')),
+            'adblue_cost': None if corrected else number(values.get('adblue_cost')),
+            'depreciation_cost': number(values.get('depreciation_cost')), 'extra_cost': number(values.get('extra_cost')),
+            'expenses': None if corrected else number(values.get('expenses')), 'profit': None if corrected else number(values.get('profit')),
+        })
+    live = []
+    for trip in trips:
+        try: economics = trip.economics
+        except TripEconomics.DoesNotExist: economics = None
+        result = finances(trip, economics)
+        live.append({
+            'kilometers': number(trip.distance_km), 'days': economics.days if economics else None, 'fuel_litres': number(trip.fuel_used_l),
+            'revenue': economics.price if economics else None, 'wage': result.get('wage'),
+            'fuel_cost': result.get('fuel'), 'adblue_cost': result.get('adblue'),
+            'depreciation_cost': result.get('depreciation'), 'extra_cost': economics.extra_cost if economics else None,
+            'expenses': result.get('total'), 'profit': result.get('profit'),
+        })
+    return {'archive': summarize(archived), 'live': summarize(live)}
+
 def report_insights(history, trips):
     """Compute comparable ratios only from rows with both inputs present."""
     from .management.commands.import_driver_reports import number
@@ -200,7 +246,7 @@ def report_context(driver=None,label=None,period=None,query=''):
         from django.utils import timezone
         trips=[trip for trip in trips if (str(trip.pk)==number_query.group(1) if number_query else matches(trip.pk,timezone.localtime(trip.completed_at).strftime('%d.%m.%Y') if trip.completed_at else '',trip.acceptance_location,trip.origin,trip.destination,trip.report_tractor_plate))]
     insights=report_insights(historical,trips)
-    return {'driver':driver,'name':driver.full_name if driver else label,'historical':historical,'trips':trips,'history_count':len(historical),'trip_count':len(trips),'history_sums':history_totals(historical),'live_finance':live_financial_totals(trips),'insight_groups':[('Архів таблиці',insights['historical']),('Рейси сайту',insights['live'])],'period':period,'query':query}
+    return {'driver':driver,'name':driver.full_name if driver else label,'historical':historical,'trips':trips,'history_count':len(historical),'trip_count':len(trips),'history_sums':history_totals(historical),'live_finance':live_financial_totals(trips),'period_totals':period_totals(historical,trips),'insight_groups':[('Архів таблиці',insights['historical']),('Рейси сайту',insights['live'])],'period':period,'query':query}
 
 @login_required
 def detail(request,pk):

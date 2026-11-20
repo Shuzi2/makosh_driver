@@ -14,7 +14,7 @@
     const selects=[...(document.querySelectorAll?.('[data-driver-upload] select')||[])];
     const choiceChanged=selects.some(select=>{const options=[...select.options];const initial=options.find(option=>option.defaultSelected)||options[0];return initial&&select.value!==initial.value;});
     const editingUpload=!!document.activeElement?.closest?.('[data-driver-upload]');
-    return document.visibilityState==='visible'&&!window.driverHasPendingAction&&!numberChanged&&!choiceChanged&&!editingUpload&&!document.querySelector('[data-driver-dirty],form[aria-busy="true"],dialog[open]');
+    return document.visibilityState==='visible'&&!window.driverHasPendingAction&&!numberChanged&&!choiceChanged&&!editingUpload&&!document.querySelector('[data-driver-dirty],form[aria-busy="true"],dialog[open],.driver-notifications[open],.driver-settings[open]');
   };
   const show=message=>{if(note){note.hidden=!message;if(note.textContent!==message)note.textContent=message;}};
   async function check(){

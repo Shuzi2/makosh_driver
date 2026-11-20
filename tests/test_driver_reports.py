@@ -19,6 +19,29 @@ class DriverReportsTests(TestCase):
         self.admin=User.objects.create_user('+380501234501',role='admin',full_name='Логіст',must_change_password=False)
         self.driver=User.objects.create_user('+380501234502',role='driver',full_name='Тестовий Водій',must_change_password=False)
 
+    def test_period_totals_keep_archive_separate_and_exclude_missing_values(self):
+        vehicle=Vehicle.objects.create(plate='SUM001',kind='tent')
+        now=timezone.now()
+        def completed(days, km, fuel):
+            return Trip.objects.create(vehicle=vehicle,driver=self.driver,created_by=self.admin,origin='А',destination='Б',cargo='Товар',planned_tons=1,planned_date=timezone.localdate(),status='completed',completed_at=now-timedelta(days=days),distance_km=km,fuel_used_l=fuel)
+        chosen=completed(0,100,Decimal('30'))
+        completed(0,50,None)
+        completed(10,900,Decimal('200'))
+        TripEconomics.objects.create(trip=chosen,price=10000,daily_rate=1000,days=2,bonus_per_km=3,fuel_price=50,adblue_price=20,adblue_rate=1,depreciation_per_km=9,credit_per_km=6,extra_cost=0)
+        DriverReportHistory.objects.create(source_sheet='Тест',source_row=2,driver=self.driver,driver_label=self.driver.full_name,trip_date=timezone.localdate(),source_values={'kilometers':200,'driver_cost':400,'profit':500},display_values={})
+        self.client.force_login(self.admin)
+        response=self.client.get(reverse('driver_report_detail',args=[self.driver.pk]),{'start':timezone.localdate().isoformat(),'end':timezone.localdate().isoformat()})
+        live=response.context['period_totals']['live']
+        archive=response.context['period_totals']['archive']
+        self.assertEqual(live['kilometers']['value'],150)
+        self.assertEqual(live['fuel_litres']['value'],30)
+        self.assertEqual(live['fuel_litres']['missing'],1)
+        self.assertEqual(live['wage']['value'],2300)
+        self.assertEqual(live['wage']['missing'],1)
+        self.assertEqual(archive['kilometers']['value'],200)
+        self.assertEqual(archive['wage']['value'],400)
+        self.assertContains(response,'Підсумки за вибраний період')
+
     def test_driver_sidebar_is_compact_and_marks_current_driver(self):
         self.client.force_login(self.admin)
         overview=self.client.get(reverse('driver_reports'))

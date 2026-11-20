@@ -31,6 +31,13 @@ class SessionActivityMiddleware:
     def __init__(self, get_response): self.get_response = get_response
     def __call__(self, request):
         if request.user.is_authenticated:
+            if request.user.role == 'driver':
+                from django.utils import timezone
+                now = int(timezone.now().timestamp())
+                renewed = request.session.get('driver_session_renewed_at', 0)
+                if not isinstance(renewed, int) or now - renewed >= 86400:
+                    request.session.set_expiry(settings.DRIVER_SESSION_AGE)
+                    request.session['driver_session_renewed_at'] = now
             from .session_activity import observe
             observe(request)
         return self.get_response(request)
