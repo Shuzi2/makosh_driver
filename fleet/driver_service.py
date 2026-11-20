@@ -67,7 +67,10 @@ def driver_service_edit(request,pk=None):
                 else:
                     item=form.save(commit=False);item.updated_by=request.user;item.save()
                     changes=[f'{form.fields[name].label}: {before[name] if before[name] not in (None, "") else "—"} → {form.cleaned_data[name] if form.cleaned_data[name] not in (None, "") else "—"}' for name in ServiceForm.Meta.fields if before[name]!=form.cleaned_data[name]]
-                    if changes: AuditEvent.objects.create(actor=request.user,action='Водій змінив сервісний запис',detail=(f'Запис №{item.pk}, {item.tractor_plate}: '+'; '.join(changes))[:1500])
+                    if changes:
+                        AuditEvent.objects.create(actor=request.user,action='Водій змінив сервісний запис',detail=(f'Запис №{item.pk}, {item.tractor_plate}: '+'; '.join(changes))[:1500])
+                        from .push import enqueue_staff
+                        enqueue_staff('staff_service')
                     return redirect('driver_service')
             else:
                 # Recheck assignment at submission, so a stale form cannot select another vehicle.
@@ -79,7 +82,10 @@ def driver_service_edit(request,pk=None):
                     key=form.cleaned_data['request_key']
                     item,created=DriverServiceRequest.objects.get_or_create(request_key=key,defaults={**{name:form.cleaned_data[name] for name in ServiceForm.Meta.fields},'vehicle':locked,'driver':request.user,'tractor_plate':locked.plate,'trailer_plate':locked.trailer_plate or ''})
                     if item.driver_id!=request.user.pk: raise PermissionDenied
-                    if created: AuditEvent.objects.create(actor=request.user,action='Водій додав сервісний запис',detail=f'Запис №{item.pk}, {item.tractor_plate}: {item.title}'[:1500])
+                    if created:
+                        AuditEvent.objects.create(actor=request.user,action='Водій додав сервісний запис',detail=f'Запис №{item.pk}, {item.tractor_plate}: {item.title}'[:1500])
+                        from .push import enqueue_staff
+                        enqueue_staff('staff_service')
                     return redirect('driver_service')
     return render(request,'fleet/driver_service_form.html',{'service_screen':True,'form':form,'vehicle':vehicle,'record':record})
 

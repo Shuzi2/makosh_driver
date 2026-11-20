@@ -208,14 +208,39 @@ class WorkspaceFeaturesTests(TestCase):
         self.assertContains(response,'Прийнято')
         self.assertIn('class="queue-item is-accepted"',self.client.get(reverse('dashboard'),{'live':'1'}).json()['cards'])
 
-    def test_accepting_free_queued_trip_makes_it_current(self):
+    def test_free_queued_trip_becomes_current_before_acceptance(self):
+        from fleet.queue_promotion import promote_ready
         trip=self.trip(status='queued')
         self.client.force_login(self.driver)
-        with self.captureOnCommitCallbacks(execute=True):
-            response=self.client.post(reverse('trip_accept',args=[trip.pk]),{'acceptance_location':'м. Вінниця, база','acceptance_odometer_km':'150000'})
+        promote_ready();trip.refresh_from_db()
+        self.assertEqual(trip.status,'planned');self.assertFalse(trip.is_accepted)
+        response=self.client.post(reverse('trip_accept',args=[trip.pk]),{'acceptance_location':'м. Вінниця, база','acceptance_odometer_km':'150000'})
         self.assertEqual(response.status_code,302)
         trip.refresh_from_db()
         self.assertTrue(trip.is_accepted);self.assertEqual(trip.status,'planned')
+
+    def test_driver_cannot_accept_future_trip_until_it_becomes_current(self):
+        import uuid
+        from fleet.queue_promotion import promote_ready
+        current=self.trip(status='planned',accepted_at=timezone.now(),accepted_by=self.driver)
+        future=self.trip(status='queued')
+        self.client.force_login(self.driver)
+        page=self.client.get(reverse('trip_detail',args=[future.pk]))
+        self.assertNotContains(page,reverse('trip_accept',args=[future.pk]))
+        self.assertContains(page,'Прийняти його можна, коли він стане поточним')
+        data={'acceptance_location':'Вінниця','acceptance_odometer_km':'150000'}
+        self.client.post(reverse('trip_accept',args=[future.pk]),data)
+        future.refresh_from_db();self.assertIsNone(future.accepted_at)
+        result=self.client.post(reverse('driver_action',args=[future.pk]),{**data,'action':'accept','request_id':str(uuid.uuid4()),'expected_revision':future.updated_at.isoformat()}).json()
+        self.assertEqual(result['outcome'],'rejected')
+        future.refresh_from_db();self.assertIsNone(future.accepted_at)
+        current.status='completed';current.completed_at=timezone.now();current.save()
+        promote_ready();future.refresh_from_db()
+        self.assertEqual(future.status,'planned');self.assertIsNone(future.accepted_at)
+        self.assertTrue(self.client.get(reverse('driver_notifications')).json()['items'])
+        self.assertContains(self.client.get(reverse('trip_detail',args=[future.pk])),reverse('trip_accept',args=[future.pk]))
+        self.client.post(reverse('trip_accept',args=[future.pk]),data)
+        future.refresh_from_db();self.assertTrue(future.is_accepted)
 
     def test_accepted_queue_waits_for_vehicle_and_earlier_trip(self):
         from fleet.queue_promotion import promote_ready
@@ -251,10 +276,11 @@ class WorkspaceFeaturesTests(TestCase):
         self.assertNotContains(response,'Нове завдання від логіста')
         self.assertEqual(self.client.get(reverse('driver_notifications')).json()['unread'],1)
         self.assertContains(response,'Авто ще виконує поточний рейс')
-        self.assertContains(response,reverse('trip_accept',args=[queued.pk]))
+        self.assertNotContains(response,reverse('trip_accept',args=[queued.pk]))
+        self.assertContains(response,'Прийняти його можна, коли він стане поточним')
         with self.captureOnCommitCallbacks(execute=True): self.client.post(reverse('trip_accept',args=[queued.pk]),{'acceptance_location':'м. Вінниця, база','acceptance_odometer_km':'150000'})
         queued.refresh_from_db();current.refresh_from_db()
-        self.assertTrue(queued.is_accepted);self.assertEqual(queued.status,'queued');self.assertEqual(current.status,'planned')
+        self.assertFalse(queued.is_accepted);self.assertEqual(queued.status,'queued');self.assertEqual(current.status,'planned')
         self.client.post(reverse('trip_start',args=[queued.pk]));queued.refresh_from_db()
         self.assertEqual(queued.status,'queued')
         self.client.force_login(self.admin)
@@ -278,7 +304,7 @@ class WorkspaceFeaturesTests(TestCase):
 
     def test_accepted_notice_does_not_reappear_if_stage_is_reset(self):
         from fleet.driver_notifications import notify_assignment
-        trip=self.trip(status='queued');notify_assignment(trip)
+        trip=self.trip(status='planned');notify_assignment(trip)
         self.client.force_login(self.driver)
         with self.captureOnCommitCallbacks(execute=True): self.client.post(reverse('trip_accept',args=[trip.pk]),{'acceptance_location':'м. Вінниця, база','acceptance_odometer_km':'150000'})
         self.assertEqual(self.client.get(reverse('driver_notifications')).json()['unread'],0)
@@ -520,6 +546,26 @@ class WorkspaceFeaturesTests(TestCase):
         self.assertContains(selected,'До списку рейсів')
         self.assertEqual(selected.context['trip'].pk,first.pk)
         self.assertEqual(self.client.get(reverse('driver_documents'),{'trip':foreign.pk}).status_code,404)
+
+    def test_driver_trip_list_groups_own_trips_and_links_to_details(self):
+        current=self.trip(status='planned'); future=self.trip(status='queued'); past=self.trip()
+        foreign=self.trip(); foreign.driver=self.other; foreign.save()
+        self.client.force_login(self.driver)
+        response=self.client.get(reverse('driver_trips'))
+        self.assertContains(response,'Поточний рейс')
+        self.assertContains(response,'Майбутні рейси')
+        self.assertContains(response,'Минулі рейси')
+        for trip in (current,future,past): self.assertContains(response,reverse('trip_detail',args=[trip.pk]))
+        self.assertNotContains(response,reverse('trip_detail',args=[foreign.pk]))
+        self.assertContains(self.client.get(reverse('trip_detail',args=[current.pk])),'До всіх рейсів')
+
+    def test_driver_trip_history_has_pagination(self):
+        trips=[self.trip() for _ in range(22)]
+        self.client.force_login(self.driver)
+        first=self.client.get(reverse('driver_trips'))
+        second=self.client.get(reverse('driver_trips'),{'page':2})
+        self.assertEqual(first.context['history_page'].paginator.count,22)
+        self.assertContains(second,reverse('trip_detail',args=[trips[0].pk]))
 
     def test_driver_document_list_can_reach_older_trips(self):
         trips=[self.trip() for _ in range(22)]

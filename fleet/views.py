@@ -76,7 +76,9 @@ def trip_accept(request,pk):
     if request.user.role != 'driver': raise PermissionDenied
     with transaction.atomic():
         trip=get_object_or_404(trips_for(request.user).select_for_update(),pk=pk)
-        if trip.status not in Trip.ACTIVE+['queued']:
+        if trip.status == 'queued':
+            messages.error(request,'Це майбутній рейс. Прийняти його можна, коли він стане поточним.')
+        elif trip.status not in Trip.ACTIVE:
             messages.error(request,'Цей рейс уже виконується або завершений.')
         elif not trip.is_accepted:
             location=request.POST.get('acceptance_location','').strip()
@@ -97,9 +99,6 @@ def trip_accept(request,pk):
             from .driver_notifications import resolve_assignment
             resolve_assignment(trip)
             event(request.user,'Водій прийняв рейс',trip,f'Місце водія під час прийняття: {location}. Спідометр: {odometer} км.')
-            if trip.status=='queued':
-                from .queue_promotion import promote_trip
-                transaction.on_commit(lambda pk=trip.pk: promote_trip(pk),robust=True)
             messages.success(request,'Рейс прийнято. Логіст бачить ваше підтвердження.')
     return redirect('trip_detail',pk=pk)
 

@@ -1,0 +1,6 @@
+<a id="trip-{{ item.trip.pk }}" class="docs-archive-card driver-trip-overview-card trip-{{ item.trip.status }}" href="{% url 'trip_detail' item.trip.pk %}">
+  <div class="docs-archive-card-head"><b>Рейс №{{ item.trip.pk }}</b><time datetime="{{ item.trip.planned_date|date:'Y-m-d' }}">{{ item.trip.planned_date|date:'d.m.Y' }}</time><span class="driver-trip-overview-status">{{ item.trip.get_status_display }}</span></div>
+  <div class="docs-archive-route"><span>{{ item.origin }}</span><i aria-hidden="true">→</i><span>{{ item.destination }}</span></div>
+  <p class="docs-archive-cargo">{{ item.trip.cargo }} · {{ item.trip.planned_tons }} т{% if item.point_count > 2 %}<span>Точок: {{ item.point_count }}</span>{% endif %}</p>
+  <div class="docs-archive-card-foot"><span class="driver-trip-overview-hint">{% if item.trip.status == 'queued' %}Очікує своєї черги{% elif item.trip.requires_acceptance %}Потрібно прийняти рейс{% elif item.trip.status == 'completed' %}Рейс завершено{% elif item.trip.status == 'cancelled' %}Рейс скасовано{% else %}Продовжити виконання{% endif %}</span><span class="docs-archive-open">Відкрити <b aria-hidden="true">→</b></span></div>
+</a>

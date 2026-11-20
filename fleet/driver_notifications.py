@@ -23,7 +23,7 @@ def visible_notices(user):
 def inbox(request):
     if request.user.role!='driver': raise PermissionDenied
     notices=visible_notices(request.user)
-    items=[{'id':n.pk,'type':'trip','trip':n.trip_id,'vehicle':n.trip.vehicle.plate,'url':reverse('trip_detail',args=[n.trip_id]),'time':timezone.localtime(n.created_at).strftime('%d.%m.%Y %H:%M'),'sort_time':n.created_at.isoformat(),'read':bool(n.read_at)} for n in notices[:40]]
+    items=[{'id':n.pk,'type':'trip','trip':n.trip_id,'vehicle':n.trip.vehicle.plate,'url':reverse('driver_trips')+f'#trip-{n.trip_id}','time':timezone.localtime(n.created_at).strftime('%d.%m.%Y %H:%M'),'sort_time':n.created_at.isoformat(),'read':bool(n.read_at)} for n in notices[:40]]
     services=DriverServiceNotification.objects.filter(recipient=request.user,service_request__driver=request.user).select_related('service_request')
     items += [{'id':f'service:{n.pk}','type':'service','title':n.service_request.title,'message':n.message,'url':reverse('driver_service')+f'#service-{n.service_request_id}','time':timezone.localtime(n.created_at).strftime('%d.%m.%Y %H:%M'),'sort_time':n.created_at.isoformat(),'read':bool(n.read_at)} for n in services[:40]]
     items.sort(key=lambda item:item['sort_time'],reverse=True)

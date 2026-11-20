@@ -67,6 +67,8 @@ def delay(request,pk):
             roles=['admin']
             if permissions is None or (permissions.view_documents and permissions.view_trips): roles.append('moderator')
             DelayNotification.objects.bulk_create([DelayNotification(recipient_id=user_id,delay=record) for user_id in User.objects.filter(is_active=True,role__in=roles).values_list('pk',flat=True)])
+            from .push import enqueue_staff
+            enqueue_staff('staff_delay',trip)
         messages.success(request,'Логістів повідомлено про затримку.')
         return redirect('trip_detail',pk=trip.pk)
     return render(request,'fleet/driver_operation_form.html',{'trip':trip,'form':form,'title':'Повідомити про затримку','submit_label':'Надіслати логістам','description':'Оберіть причину та, за бажанням, вкажіть приблизний час.'})

@@ -1,0 +1,16 @@
+{% extends 'base.html' %}{% load static %}
+{% block extra_css %}<link rel="stylesheet" href="{% static 'routes.css' %}"><link rel="stylesheet" href="{% static 'driver_compact.css' %}"><link rel="stylesheet" href="{% static 'driver_documents.css' %}?v=2"><link rel="stylesheet" href="{% static 'driver_trip_overview.css' %}">{% endblock %}
+{% block content %}
+<div data-driver-dashboard data-cancellations-only="1" data-updates-url="{% url 'driver_updates' %}" data-version="{{ driver_update_version }}"></div>
+{% include 'fleet/driver_cancel_warning.html' %}
+<div class="driver-page-heading"><h1 class="driver-page-title">Мої рейси</h1></div>
+<p class="driver-connection" data-driver-connection role="status">Перевіряємо зв’язок…</p><p class="driver-live-note" data-driver-live-note role="status" hidden></p>
+<p class="driver-trips-intro">Усі завдання в одному місці. Оберіть рейс, щоб переглянути деталі.</p>
+<section class="driver-trips-group"><div class="driver-trips-group-head"><div><h2>Поточний рейс</h2><p>Ваше завдання зараз</p></div><span>{{ current_trips|length }}</span></div>
+{% for item in current_trips %}{% include 'fleet/driver_trip_overview_card.html' %}{% empty %}<p class="driver-trips-empty">Зараз активного рейсу немає.</p>{% endfor %}</section>
+<section class="driver-trips-group"><div class="driver-trips-group-head"><div><h2>Майбутні рейси</h2><p>Завдання, які чекають на вас</p></div><span>{{ upcoming_trips|length }}</span></div>
+{% for item in upcoming_trips %}{% include 'fleet/driver_trip_overview_card.html' %}{% empty %}<p class="driver-trips-empty">Нових завдань поки немає.</p>{% endfor %}</section>
+<section class="driver-trips-group"><div class="driver-trips-group-head"><div><h2>Минулі рейси</h2><p>Завершені та скасовані</p></div><span>{{ history_page.paginator.count }}</span></div>
+{% for item in past_trips %}{% include 'fleet/driver_trip_overview_card.html' %}{% empty %}<p class="driver-trips-empty">Тут з’явиться історія ваших рейсів.</p>{% endfor %}
+{% if history_page.has_other_pages %}<nav class="docs-list-pagination" aria-label="Сторінки минулих рейсів">{% if history_page.has_previous %}<a href="?page={{ history_page.previous_page_number }}">← Новіші</a>{% endif %}<span>{{ history_page.number }} / {{ history_page.paginator.num_pages }}</span>{% if history_page.has_next %}<a href="?page={{ history_page.next_page_number }}">Старіші →</a>{% endif %}</nav>{% endif %}</section>
+{% endblock %}

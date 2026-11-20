@@ -89,7 +89,9 @@ def driver_action(request, pk):
             if receipt.result: return JsonResponse(receipt.result)
             try: revision=parse_datetime(payload['expected_revision'])
             except ValueError: revision=None
-            if action=='accept' and not trip.is_accepted and (not payload.get('acceptance_location','').strip() or len(payload.get('acceptance_location','').strip())>250):
+            if action=='accept' and trip.status=='queued':
+                result={'outcome':'rejected','message':'Це майбутній рейс. Прийняти його можна, коли він стане поточним.','redirect':reverse('trip_detail',args=[pk])}
+            elif action=='accept' and not trip.is_accepted and (not payload.get('acceptance_location','').strip() or len(payload.get('acceptance_location','').strip())>250):
                 result={'outcome':'rejected','message':'Укажіть, де ви зараз стоїте (до 250 символів).','redirect':reverse('dashboard')}
             elif action=='accept' and not trip.is_accepted and (not payload.get('acceptance_odometer_km','').strip().isascii() or not payload.get('acceptance_odometer_km','').strip().isdigit() or len(payload.get('acceptance_odometer_km','').strip())>7):
                 result={'outcome':'rejected','message':'Укажіть показник спідометра цілим числом від 0 до 9 999 999 км.','redirect':reverse('dashboard')}

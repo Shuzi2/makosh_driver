@@ -69,6 +69,8 @@ def upload_documents(request,pk):
                     roles=['admin']
                     if permissions is None or (permissions.view_documents and permissions.view_trips): roles.append('moderator')
                     TtnNotification.objects.bulk_create([TtnNotification(recipient_id=user_id, document=doc) for user_id in User.objects.filter(is_active=True,role__in=roles).values_list('pk',flat=True)])
+                    from .push import enqueue_staff
+                    enqueue_staff('staff_ttn',trip)
                 if doc.stop_id:
                     from .routes import refresh_signed
                     refresh_signed(doc.stop)

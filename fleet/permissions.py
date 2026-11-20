@@ -40,7 +40,7 @@ MODERATOR_ROUTES = {
 
 DRIVER_ROUTE_PERMISSIONS = {
     'dashboard': 'view_trips', 'trip_list': 'view_trips', 'trip_detail': 'view_trips',
-    'driver_updates': 'view_trips', 'driver_finish': 'view_trips', 'driver_settlement_search': 'change_stages',
+    'driver_updates': 'view_trips', 'driver_trips': 'view_trips', 'driver_finish': 'view_trips', 'driver_settlement_search': 'change_stages',
     'driver_delay': 'report_delays', 'driver_expense': 'manage_expenses', 'expense_receipt': 'manage_expenses',
     'driver_documents': 'upload_documents', 'document_download': 'upload_documents',
     'driver_service': 'view_trips', 'driver_service_create': 'view_trips', 'driver_service_edit': 'view_trips',
@@ -66,7 +66,7 @@ class DriverPermissionMiddleware:
             return None
         if request.user.role == 'moderator':
             name = request.resolver_match.url_name
-            if name in ('logout', 'password_change', 'driver_push_worker', 'driver_push_manifest'):
+            if name in ('logout', 'password_change', 'driver_push_worker', 'driver_push_manifest', 'driver_push_config', 'driver_push_subscribe', 'driver_push_unsubscribe'):
                 return None
             pair = MODERATOR_ROUTES.get(name)
             if not pair:

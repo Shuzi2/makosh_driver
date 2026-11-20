@@ -803,12 +803,12 @@ class FleetTests(TestCase):
         self.assertFalse(Document.objects.exists())
         self.accept()
         self.assertContains(self.client.get('/'),'Фото / ТТН')
-        self.assertContains(self.client.get('/driver/documents/'),'data-driver-upload')
+        self.assertContains(self.client.get('/driver/documents/',{'trip':self.trip.pk}),'data-driver-upload')
         self.assertEqual(self.upload().status_code,302)
         queued=self.queue_trip()
         self.assertEqual(self.upload(queued).status_code,403)
         self.accept(queued)
-        self.assertEqual(self.upload(queued).status_code,302)
+        self.assertEqual(self.upload(queued).status_code,403)
     def rest(self, state='start', **extra):
         self.driver.refresh_from_db()
         return self.client.post('/driver/rest/action/',{'rest':state,'request_id':str(uuid.uuid4()),
@@ -937,10 +937,10 @@ class FleetTests(TestCase):
         response=self.client.get(self.url('trip_detail',self.trip.pk))
         self.assertContains(response,'driver-history-selected')
         self.assertNotContains(response,'class="driver-task')
-    def test_queue_can_be_accepted_while_current_trip_is_running(self):
+    def test_queue_cannot_be_accepted_while_current_trip_is_running(self):
         queued=self.queue_trip();self.login_as(self.driver)
         self.accept(queued);queued.refresh_from_db()
-        self.assertTrue(queued.is_accepted)
+        self.assertFalse(queued.is_accepted)
         self.assertEqual(queued.status,'queued')
         self.assertIsNone(queued.completed_at)
         self.assertEqual(self.client.get('/').context['trip'],self.trip)
@@ -996,7 +996,7 @@ class FleetTests(TestCase):
     def test_mobile_documents_are_private_and_upload_returns_to_selected_trip(self):
         self.login_as(self.driver)
         self.accept()
-        response=self.client.get('/driver/documents/')
+        response=self.client.get('/driver/documents/',{'trip':self.trip.pk})
         self.assertContains(response,'capture="environment"')
         self.assertContains(response,'TEST0001')
         self.assertNotContains(response,'TEST0002')
@@ -1004,7 +1004,7 @@ class FleetTests(TestCase):
             self.assertEqual(self.client.get('/driver/documents/',{'trip':value}).status_code,404)
         response=self.upload()
         self.assertRedirects(response,f'/driver/documents/?trip={self.trip.pk}',fetch_redirect_response=False)
-        self.assertContains(self.client.get('/driver/documents/'),'✓ Підписана ТТН')
+        self.assertContains(self.client.get('/driver/documents/',{'trip':self.trip.pk}),'✓ Підписана ТТН')
         self.assertTrue(self.trip.documents.filter(original_name='signed.pdf').exists())
         self.login_as(self.logistic)
         self.assertEqual(self.client.get('/driver/documents/').status_code,403)
@@ -1041,7 +1041,7 @@ class FleetTests(TestCase):
         self.spare.refresh_from_db();self.assertFalse(self.spare.must_change_password)
     def test_driver_only_sees_own_trip(self):
         self.login_as(self.driver)
-        r=self.client.get('/trips/');self.assertContains(r,'TEST0001');self.assertNotContains(r,'TEST0002')
+        r=self.client.get('/trips/');self.assertContains(r,f'?trip={self.trip.pk}');self.assertNotContains(r,f'?trip={self.trip2.pk}')
         self.assertEqual(self.client.get(self.url('trip_detail',self.trip2.pk)).status_code,404)
         self.assertEqual(self.client.post(self.url('trip_status',self.trip2.pk),{'status':'loading'}).status_code,404)
         self.assertEqual(self.upload(self.trip2).status_code,404)
@@ -1136,9 +1136,11 @@ class FleetTests(TestCase):
         self.assertNotEqual(self.client.get('/driver/updates/').json()['version'],new_version)
         self.assertEqual(self.client.get('/').context['trip'],self.trip2)
         self.assertEqual(self.client.get('/').context['queued_trips'][0],self.trip)
-        self.finish(self.trip2);self.accept(self.trip)
+        self.finish(self.trip2)
+        from fleet.queue_promotion import promote_ready
+        promote_ready();self.accept(self.trip)
         self.client.post(self.url('trip_start',existing.pk));existing.refresh_from_db();self.assertEqual(existing.status,'queued')
-        self.client.post(self.url('trip_start',self.trip.pk));self.trip.refresh_from_db()
+        self.trip.refresh_from_db()
         self.assertEqual(self.trip.status,'planned');self.assertIsNone(self.trip.queue_priority_at)
     def test_free_driver_transfer_moves_actual_vehicle_and_keeps_old_vehicle_document_history(self):
         from fleet.models import TripTransfer
@@ -1229,9 +1231,9 @@ class FleetTests(TestCase):
         self.login_as(self.driver);self.accept();self.upload();self.assertFalse(Document.objects.exists())
     def test_completed_trip_accepts_late_ttn_and_clears_missing(self):
         self.finish();self.login_as(self.driver)
-        self.assertContains(self.client.get('/trips/?status=missing'),'TEST0001')
+        self.assertContains(self.client.get('/trips/?status=missing'),f'?trip={self.trip.pk}')
         self.upload()
-        self.assertNotContains(self.client.get('/trips/?status=missing'),'TEST0001')
+        self.assertNotContains(self.client.get('/trips/?status=missing'),f'?trip={self.trip.pk}')
     def test_cancelled_trip_cannot_upload(self):
         self.trip.status='cancelled';self.trip.save();self.login_as(self.driver)
         self.assertEqual(self.upload().status_code,403)
@@ -1727,8 +1729,10 @@ class FleetTests(TestCase):
         self.accept(first);self.accept(second)
         self.client.post(self.url('trip_start',first.pk));first.refresh_from_db();self.assertEqual(first.status,'queued')
         self.finish()
+        from fleet.queue_promotion import promote_ready
+        promote_ready()
         self.client.post(self.url('trip_start',second.pk));second.refresh_from_db();self.assertEqual(second.status,'queued')
-        self.assertEqual(self.client.post(self.url('trip_start',first.pk)).status_code,302)
+        self.accept(first)
         first.refresh_from_db();self.assertEqual(first.status,'planned')
         self.client.post(self.url('trip_start',first.pk));self.assertEqual(Trip.objects.filter(vehicle=self.vehicle,status__in=Trip.ACTIVE).count(),1)
     def test_queue_waits_for_driver_on_another_vehicle(self):
@@ -1763,6 +1767,7 @@ class FleetTests(TestCase):
         queued=self.queue_trip();self.login_as(self.driver)
         self.accept(queued)
         response=self.client.get(self.url('trip_detail',queued.pk))
-        self.assertContains(response,'Почати рейс із черги')
+        self.assertContains(response,'Прийняти його можна, коли він стане поточним')
+        self.assertNotContains(response,'Почати рейс із черги')
         self.assertContains(response,'Авто ще виконує поточний рейс')
         self.assertNotContains(response,self.other.full_name)

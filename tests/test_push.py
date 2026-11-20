@@ -23,20 +23,75 @@ class DriverPushTests(TestCase):
     def subscribe(self,payload=None):
         return self.client.post(reverse('driver_push_subscribe'),data=json.dumps(payload or self.subscription),content_type='application/json')
 
-    def test_subscribe_requires_driver_and_rejects_untrusted_endpoints(self):
+    def test_subscribe_allows_fleet_staff_and_rejects_untrusted_endpoints(self):
         self.assertEqual(self.subscribe().status_code,200)
         from fleet.models import PushSubscription
         self.assertEqual(PushSubscription.objects.filter(user=self.driver).count(),1)
         bad={**self.subscription,'endpoint':'https://127.0.0.1/private'}
         self.assertEqual(self.subscribe(bad).status_code,400)
         self.client.force_login(self.staff)
-        self.assertEqual(self.subscribe().status_code,403)
+        self.assertEqual(self.subscribe().status_code,200)
+        page=self.client.get(reverse('dashboard'))
+        self.assertContains(page,'data-staff-menu')
+        self.assertContains(page,'Налаштування сповіщень')
+        self.assertContains(page,'data-staff-push')
+
+    def test_manager_push_events_go_only_to_authorized_staff(self):
+        from fleet.models import PushDelivery, PushSubscription
+        from fleet.push import enqueue_staff,process_deliveries
+        self.client.force_login(self.staff);self.subscribe()
+        mod=User.objects.create_user('+380501010104',role='moderator',full_name='Модератор',must_change_password=False)
+        PushSubscription.objects.create(user=mod,endpoint='https://fcm.googleapis.com/fcm/send/mod',p256dh=self.subscription['keys']['p256dh'],auth=self.subscription['keys']['auth'])
+        from fleet.permissions_models import ModeratorPermissionSettings
+        settings,_=ModeratorPermissionSettings.objects.get_or_create(pk=1)
+        settings.view_documents=False;settings.save()
+        enqueue_staff('staff_ttn',self.trip)
+        enqueue_staff('staff_delay',self.trip)
+        enqueue_staff('staff_service')
+        self.assertEqual(PushDelivery.objects.filter(recipient=self.staff).count(),3)
+        self.assertEqual(list(PushDelivery.objects.filter(recipient=mod).values_list('kind',flat=True)),['staff_service'])
+        settings.view_fleet=False;settings.save()
+        with patch('fleet.push.webpush') as sender: process_deliveries()
+        self.assertEqual(sender.call_count,3)
+        self.assertEqual(PushDelivery.objects.get(recipient=mod).status,'discarded')
+        self.assertTrue(all(json.loads(call.kwargs['data'])['url'].startswith('/') for call in sender.call_args_list))
+
+    def test_moderator_can_manage_own_phone_subscription(self):
+        moderator=User.objects.create_user('+380501010105',role='moderator',full_name='Модератор',must_change_password=False)
+        self.client.force_login(moderator)
+        self.assertEqual(self.client.get(reverse('driver_push_config')).status_code,200)
+        self.assertEqual(self.subscribe().status_code,200)
+        self.assertEqual(self.client.post(reverse('driver_push_unsubscribe'),data=json.dumps({'endpoint':self.subscription['endpoint']}),content_type='application/json').status_code,200)
+
+    def test_driver_events_queue_manager_notifications_once(self):
+        from io import BytesIO
+        from PIL import Image
+        from django.core.files.uploadedfile import SimpleUploadedFile
+        from fleet.models import PushDelivery
+        import tempfile
+        self.client.force_login(self.staff);self.subscribe()
+        self.client.force_login(self.driver)
+        self.trip.accepted_at=timezone.now();self.trip.accepted_by=self.driver;self.trip.save()
+        self.assertEqual(self.client.post(reverse('driver_delay',args=[self.trip.pk]),{'reason':'traffic','minutes':30}).status_code,302)
+        self.assertEqual(PushDelivery.objects.filter(kind='staff_delay').count(),1)
+        image=BytesIO();Image.new('RGB',(10,10)).save(image,format='PNG')
+        with tempfile.TemporaryDirectory() as media, override_settings(MEDIA_ROOT=media):
+            upload=SimpleUploadedFile('ttn.png',image.getvalue(),content_type='image/png')
+            self.assertEqual(self.client.post(reverse('document_upload',args=[self.trip.pk]),{'kind':'ttn','file':upload}).status_code,302)
+        self.assertEqual(PushDelivery.objects.filter(kind='staff_ttn').count(),1)
+        page=self.client.get(reverse('driver_service_create'))
+        data={'request_key':page.context['form'].initial['request_key'],'category':'problem','title':'Пічка'}
+        self.assertEqual(self.client.post(reverse('driver_service_create'),data).status_code,302)
+        self.assertEqual(self.client.post(reverse('driver_service_create'),data).status_code,302)
+        self.assertEqual(PushDelivery.objects.filter(kind='staff_service').count(),1)
 
     def test_assignment_queues_only_recipient_and_delivers_generic_payload(self):
         self.subscribe()
         from fleet.driver_notifications import notify_assignment
         from fleet.models import PushDelivery
         notify_assignment(self.trip)
+        notice=self.client.get(reverse('driver_notifications')).json()['items'][0]
+        self.assertEqual(notice['url'],reverse('driver_trips')+f'#trip-{self.trip.pk}')
         delivery=PushDelivery.objects.get()
         self.assertEqual(delivery.subscription.user,self.driver)
         from fleet.push import process_deliveries
@@ -47,7 +102,7 @@ class DriverPushTests(TestCase):
         payload=json.loads(sender.call_args.kwargs['data'])
         self.assertIn(f'№{self.trip.pk}',payload['title'])
         self.assertIn('прийміть',payload['body'].lower())
-        self.assertEqual(payload['url'],reverse('dashboard'))
+        self.assertEqual(payload['url'],reverse('driver_trips')+f'#trip-{self.trip.pk}')
         self.assertNotIn(self.driver.full_name,sender.call_args.kwargs['data'])
         self.assertNotIn(self.vehicle.plate,sender.call_args.kwargs['data'])
 

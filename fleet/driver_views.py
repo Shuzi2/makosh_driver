@@ -41,6 +41,29 @@ ACTIONS = {
 }
 
 
+@login_required
+@require_GET
+def driver_trips(request):
+    if request.user.role != 'driver': raise PermissionDenied
+    from django.core.paginator import Paginator
+    from .views import trips_for
+    own = trips_for(request.user)
+    active = own.filter(status__in=Trip.ACTIVE).order_by('-updated_at', '-pk')
+    upcoming = Trip.ordered_queue(own.filter(status='queued'))
+    history = own.filter(status__in=['completed', 'cancelled']).annotate(history_at=Coalesce(
+        Case(When(status='completed',then='completed_at'),When(status='cancelled',then='cancelled_at'),output_field=DateTimeField()),
+        Cast('planned_date',DateTimeField()),
+    )).order_by('-history_at','-id')
+    page = Paginator(history, 20).get_page(request.GET.get('page'))
+    return render(request,'fleet/driver_trip_overview.html',{
+        'driver_update_version':driver_update_version(request.user),
+        'current_trips':[document_trip_overview(trip) for trip in active],
+        'upcoming_trips':[document_trip_overview(trip) for trip in upcoming],
+        'past_trips':[document_trip_overview(trip) for trip in page.object_list],
+        'history_page':page,
+    })
+
+
 
 def driver_home(request, selected_trip=None):
     from .views import trips_for, queue_block_reason
