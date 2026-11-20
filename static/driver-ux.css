@@ -36,8 +36,8 @@
 .fleet-workspace.driver-mode :is(.driver-task,.driver-next,.driver-vehicle-wait){border-radius:16px}
 .fleet-workspace.driver-mode .driver-next-item{border-radius:12px;line-height:1.5;overflow-wrap:anywhere;transition:background-color .18s ease,border-color .18s ease}
 .fleet-workspace.driver-mode .driver-next-item:hover{background:#fff8f4;border-color:#f0c9b6}
-.fleet-workspace.driver-mode :is(.driver-action,.driver-notifications summary,.driver-settings summary,.driver-next-item){touch-action:manipulation}
-.fleet-workspace.driver-mode :is(.driver-action,.driver-notifications summary,.driver-settings summary,.driver-next-item,.driver-notice-item):focus-visible{outline:3px solid #d9460e;outline-offset:3px}
+.fleet-workspace.driver-mode :is(.driver-action,.driver-notifications .driver-menu-trigger,.driver-settings .driver-menu-trigger,.driver-next-item){touch-action:manipulation}
+.fleet-workspace.driver-mode :is(.driver-action,.driver-notifications .driver-menu-trigger,.driver-settings .driver-menu-trigger,.driver-next-item,.driver-notice-item):focus-visible{outline:3px solid #d9460e;outline-offset:3px}
 .fleet-workspace.driver-mode .driver-notifications-panel{border-radius:16px;overscroll-behavior:contain}
 .fleet-workspace.driver-mode .driver-notice-item{min-height:54px;line-height:1.45}
 .fleet-workspace.driver-mode .driver-notice-error{color:#8a3b1a;line-height:1.5}
@@ -94,13 +94,13 @@
 @media(prefers-reduced-motion:no-preference){
   .fleet-workspace.driver-mode :is(.driver-task,.driver-address-list>li,.driver-compact-call,.driver-compact-ttn){transition:background-color .2s ease,border-color .2s ease,box-shadow .2s ease}
   .fleet-workspace.driver-mode :is(.driver-compact-call,.driver-compact-ttn):hover{box-shadow:0 3px 12px #20242a18}
-  .fleet-workspace.driver-mode :is(.driver-notifications[open]>.driver-notifications-panel,.driver-settings[open]>div,.driver-stage-details[open]>.driver-stage-heading,.driver-stage-details[open]>.driver-stage-grid,.driver-next[open]>.driver-next-list,.driver-history[open]>.driver-history-item,.driver-general-note[open]>p,.driver-stop-note[open]>p){animation:driver-soft-enter .2s ease-out both}
+  .fleet-workspace.driver-mode :is(.driver-notifications[data-open="true"]>.driver-notifications-panel,.driver-settings[data-open="true"]>[data-driver-menu-panel],.driver-stage-details[open]>.driver-stage-heading,.driver-stage-details[open]>.driver-stage-grid,.driver-next[open]>.driver-next-list,.driver-history[open]>.driver-history-item,.driver-general-note[open]>p,.driver-stop-note[open]>p){animation:driver-soft-enter .2s ease-out both}
   .fleet-workspace.driver-mode .driver-notice-item{animation:driver-soft-enter .18s ease-out both}
   @keyframes driver-soft-enter{from{opacity:0;transform:translateY(-4px)}to{opacity:1;transform:translateY(0)}}
 }
 
 /* Prevent overlays from capturing taps after the native disclosure closes. */
-.fleet-workspace.driver-mode :is(.driver-notifications:not([open]) > .driver-notifications-panel,.driver-settings:not([open]) > div){display:none!important}
+.fleet-workspace.driver-mode :is(.driver-notifications[data-open="false"] > .driver-notifications-panel,.driver-settings[data-open="false"] > [data-driver-menu-panel]){display:none!important}
 /* Respect the camera and home indicator on edge-to-edge iPhone screens. */
 .fleet-workspace.driver-mode .driver-topbar{padding-top:calc(12px + env(safe-area-inset-top, 0px))}
 .fleet-workspace.driver-mode .driver-bottom-nav{padding-bottom:max(14px, env(safe-area-inset-bottom, 0px))}

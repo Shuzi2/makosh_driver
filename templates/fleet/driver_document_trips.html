@@ -1,11 +1,6 @@
 {% if other_document_trips %}<details class="docs-old-trips">
   <summary><span class="docs-archive-heading"><b>Інші рейси</b><small>Документи попередніх і наступних поїздок</small></span><span class="docs-archive-count">{{ other_document_trips|length }}</span><span class="docs-archive-chevron" aria-hidden="true">⌄</span></summary>
   <div class="docs-archive-list">
-    {% for item in other_document_trips %}<a class="docs-archive-card is-{{ item.state }}" href="{% url 'driver_documents' %}?trip={{ item.trip.pk }}{% if item.kind %}&amp;kind={{ item.kind }}{% endif %}{% if item.stop_id %}&amp;stop={{ item.stop_id }}{% endif %}" aria-label="Документи рейсу №{{ item.trip.pk }}: {{ item.origin }} → {{ item.destination }}. {% for document in item.ttn_summary %}{{ document.label }}: {{ document.text }}. {% endfor %}">
-      <div class="docs-archive-card-head"><b>Рейс №{{ item.trip.pk }}</b><time datetime="{{ item.trip.planned_date|date:'Y-m-d' }}">{{ item.trip.planned_date|date:'d.m.Y' }}</time><span class="docs-archive-trip-status {{ item.trip.status }}">{{ item.trip.get_status_display }}</span></div>
-      <div class="docs-archive-route"><span>{{ item.origin }}</span><i aria-hidden="true">→</i><span>{{ item.destination }}</span></div>
-      <p class="docs-archive-cargo">{{ item.trip.cargo }} · {{ item.trip.planned_tons }} т{% if item.point_count > 2 %}<span>Точок: {{ item.point_count }}</span>{% endif %}</p>
-      <div class="docs-archive-ttn">{% for document in item.ttn_summary %}<div><span>{{ document.label }}</span><strong class="fleet-ttn-state is-{{ document.state }}">{{ document.text }}</strong></div>{% endfor %}</div><div class="docs-archive-card-foot"><span class="docs-archive-document-state"><i aria-hidden="true">{% if item.state == 'complete' %}✓{% elif item.state == 'missing' %}＋{% else %}▤{% endif %}</i>{{ item.hint }}</span><span class="docs-archive-open" aria-hidden="true">Відкрити <b>→</b></span></div>
-    </a>{% endfor %}
+    {% for item in other_document_trips %}{% include 'fleet/driver_document_trip_card.html' %}{% endfor %}
   </div>
 </details>{% endif %}

@@ -63,6 +63,6 @@
   refresh();setInterval(refresh,5000);
   tripLink?.addEventListener('click',rememberTrips);
   serviceLink?.addEventListener('click',rememberService);
-  box.addEventListener('toggle',()=>{if(box.open)refresh()});
+  box.addEventListener('driver-menu-open',refresh);
   document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible')refresh()});
 })();

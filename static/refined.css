@@ -195,8 +195,8 @@
 .fleet-workspace .driver-next-list { background: #f1f2e9; border-color: #d1d6c4; }
 .fleet-workspace .driver-instruction,
 .fleet-workspace .driver-task>.stage-duration { background: #faf7f1; }
-.fleet-workspace .driver-settings summary,
-.fleet-workspace .driver-settings>div { background: #faf7f1; border-color: #c9cdbd; }
+.fleet-workspace .driver-settings .driver-menu-trigger,
+.fleet-workspace .driver-settings>[data-driver-menu-panel] { background: #faf7f1; border-color: #c9cdbd; }
 .fleet-workspace .driver-settings a:hover,
 .fleet-workspace .driver-settings button:hover { background: #eee5d8; }
 .fleet-workspace.driver-mode .driver-bottom-nav {
@@ -220,7 +220,7 @@
 }
 .fleet-workspace.driver-mode .driver-file-button { background: #f8f4ec; border-color: #c9cdb9; color: #52654a; }
 
-.fleet-workspace :is(.btn, .edit-pencil, .fleet-vehicle, a.metric, nav a, input, select, textarea, .vehicle-menu summary, .dialog-close, .driver-settings summary) {
+.fleet-workspace :is(.btn, .edit-pencil, .fleet-vehicle, a.metric, nav a, input, select, textarea, .vehicle-menu summary, .dialog-close, .driver-settings .driver-menu-trigger) {
   transition: background-color 160ms ease, border-color 160ms ease, color 160ms ease, box-shadow 160ms ease;
 }
 @keyframes mineral-dialog-in {

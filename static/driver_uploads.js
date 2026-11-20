@@ -17,7 +17,7 @@
     function changed(){window.dispatchEvent?.(new Event('driver:drafts'));}
     function lock(){
       controls.forEach((control,i)=>{control.disabled=originallyDisabled(control,i)||uploading||conflict||(frozen&&control!==submit);});
-      list.querySelectorAll?.('button').forEach(button=>button.disabled=uploading||frozen||conflict);
+      list.querySelectorAll?.('button').forEach(button=>button.disabled=uploading||conflict);
     }
     function render(){
       previews.forEach(url=>URL.revokeObjectURL(url));previews=[];list.replaceChildren();
@@ -25,7 +25,12 @@
         const li=document.createElement('li'),label=document.createElement('span');label.textContent=(index+1)+'. '+file.name;
         if(file.type?.startsWith('image/')&&URL.createObjectURL){const img=document.createElement('img'),url=URL.createObjectURL(file);previews.push(url);img.src=url;img.alt='Обране фото';li.append(img);}
         const remove=document.createElement('button');remove.type='button';remove.textContent='Прибрати';remove.setAttribute('aria-label','Прибрати '+file.name);
-        remove.addEventListener('click',()=>{if(uploading||frozen||conflict)return;selected.splice(index,1);batchId=newId();render();save();});
+        remove.addEventListener('click',()=>{
+          if(uploading||conflict)return;
+          if(frozen&&!window.confirm('Сервер не підтвердив відповідь, але фото могло вже зберегтися. Перевірте документи рейсу перед повторним надсиланням, щоб уникнути дублювання. Прибрати це фото з телефону?'))return;
+          if(frozen){frozen=false;metadata=null;}
+          selected.splice(index,1);batchId=newId();render();save();
+        });
         li.append(label,remove);list.append(li);
       });
       status.textContent=selected.length?'Обрано файлів: '+selected.length+'. Фото готові до надсилання.':'Зробіть фото або оберіть кілька файлів.';
@@ -89,6 +94,11 @@
       lock();form.setAttribute('aria-busy','true');submit.textContent='Надсилаємо…';status.textContent='Очікуємо підтвердження збереження від сервера…';
       try{
         const response=await window.driverUploadPost(form.action,data,120000);
+        if(response.status===413){
+          frozen=false;metadata=null;batchId=newId();controls.forEach((c,i)=>c.disabled=originallyDisabled(c,i));await save();
+          status.textContent='Обсяг фото завеликий для сервера. Приберіть частину файлів і надішліть їх окремими групами.';
+          uploading=false;form.removeAttribute('aria-busy');lock();submit.textContent=submit.dataset.uploadLabel||'Надіслати документи ↑';return;
+        }
         if(response.redirected||!response.headers.get('content-type')?.includes('application/json'))throw new Error('session');
         const result=await response.json();
         if(response.ok&&result.outcome==='confirmed'){
@@ -98,7 +108,7 @@
         }
         if(response.status===400&&result.outcome==='rejected'){frozen=false;batchId=newId();controls.forEach((c,i)=>c.disabled=originallyDisabled(c,i));await save();}
         status.textContent=result.message||'Документи ще не підтверджені. Перевірте доступ до рейсу та повторіть надсилання.';
-      }catch(error){status.textContent='Сервер ще не підтвердив збереження фото. Повторіть надсилання. Повторна спроба не дублює файли.';}
+      }catch(error){status.textContent=error.message==='session'?'Доступ або відповідь сервера не підтверджено. Перевірте вхід і відкрийте документи знову; фото збережені на телефоні, якщо пам’ять доступна.':'Сервер ще не підтвердив збереження фото. Повторіть надсилання. Повторна спроба не дублює файли.';}
       uploading=false;form.removeAttribute('aria-busy');lock();submit.textContent=submit.dataset.uploadLabel||'Надіслати документи ↑';
     });
   });

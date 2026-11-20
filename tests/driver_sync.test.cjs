@@ -18,12 +18,13 @@ function fixture({storage=new Map(),user='1',fetchImpl,upload=false,draftStore}=
   form.querySelectorAll=()=>[button];form.fields={action:'status',status:'loading'};
   banner.querySelector=selector=>({'[data-driver-sync-text]':text,'[data-driver-retry]':retry,'[data-driver-sync-reload]':reload}[selector]);
   const camera=new Element(),picker=new Element(),fileStatus=new Element(),fileList=new Element(),uploadSubmit=new Element(),kind=new Element(),uploadForm=new Element(),draftNote=new Element();
+  fileList.querySelectorAll=()=> (fileList.children||[]).map(item=>item.children?.at(-1)).filter(Boolean);
   draftNote.classList={toggle(){}};
   uploadForm.fields={kind:'signed_ttn'};uploadForm.action='/trips/10/documents/';
   uploadForm.querySelector=selector=>({'.driver-file-status':fileStatus,'[data-driver-selected-files]':fileList,'button[type="submit"]':uploadSubmit,'[name="kind"]':kind,'[data-upload-draft-status]':draftNote}[selector]);
   kind.dispatchEvent=()=>{};
   uploadForm.querySelectorAll=selector=>selector==='input[type="file"]'?[camera,picker]:[camera,picker,kind,uploadSubmit];
-  const window={DriverUploadStore:draftStore,handlers:{},location:{redirect:null,assign(url){this.redirect=url;},reload(){}},addEventListener(name,handler){this.handlers[name]=handler;}};
+  const window={DriverUploadStore:draftStore,confirm:()=>true,handlers:{},location:{redirect:null,assign(url){this.redirect=url;},reload(){}},addEventListener(name,handler){this.handlers[name]=handler;}};
   const document={body:{dataset:{driverUser:user}},visibilityState:'visible',createElement:()=>new Element(),querySelector(selector){return selector==='[data-driver-sync]'?banner:{value:'csrf'};},querySelectorAll(selector){return selector==='[data-driver-action]'?[form]:selector==='[data-driver-upload]'&&upload?[uploadForm]:[];}};
   class FormData {
     constructor(element){this.map=new Map(Object.entries(element?.fields||{}));}
@@ -165,4 +166,27 @@ test('an uncertain upload freezes file edits so retry cannot create duplicates',
   const app=fixture({upload:true,draftStore:draftStore(),fetchImpl:async()=>{throw new Error('lost');}});await flush();app.camera.files=[pdf()];app.camera.handlers.change();await flush();await app.upload();
   assert.equal(app.camera.disabled,true);app.picker.files=[pdf()];app.picker.handlers.change();
   assert.equal(app.fileList.children.length,1);await app.upload();assert.equal(app.calls[1].data.request_id,app.calls[0].data.request_id);
+});
+test('driver can explicitly remove an uncertain photo after warning without deleting other drafts',async()=>{
+  const store=draftStore();const app=fixture({upload:true,draftStore:store,fetchImpl:async()=>{throw new Error('lost');}});await flush();
+  app.camera.files=[pdf()];app.camera.handlers.change();await flush();await app.upload();
+  const button=app.fileList.children[0].children.at(-1);
+  assert.equal(button.disabled,false);
+  button.handlers.click();await flush();
+  assert.equal(app.fileList.children.length,0);assert.equal(store.rows.size,0);
+  assert.equal(app.camera.disabled,false);
+});
+test('cancelling the warning preserves the frozen retry and original files',async()=>{
+  const store=draftStore();const app=fixture({upload:true,draftStore:store,fetchImpl:async()=>{throw new Error('lost');}});await flush();
+  app.camera.files=[pdf()];app.camera.handlers.change();await flush();await app.upload();
+  app.window.confirm=()=>false;app.fileList.children[0].children.at(-1).handlers.click();await flush();
+  assert.equal(app.fileList.children.length,1);assert.equal([...store.rows.values()][0].frozen,true);
+  await app.upload();assert.equal(app.calls[1].data.request_id,app.calls[0].data.request_id);
+});
+test('server size limit explains the problem and lets the driver remove photos',async()=>{
+  const app=fixture({upload:true,draftStore:draftStore(),fetchImpl:async()=>({ok:false,status:413,headers:{get:()=> 'text/html'}})});await flush();
+  app.camera.files=[pdf()];app.camera.handlers.change();await flush();await app.upload();
+  assert.match(app.fileStatus.textContent,/завеликий/);
+  assert.equal(app.camera.disabled,false);
+  assert.equal(app.fileList.children[0].children.at(-1).disabled,false);
 });

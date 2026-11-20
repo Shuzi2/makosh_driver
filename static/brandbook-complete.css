@@ -23,7 +23,7 @@
 .fleet-workspace :is(.trip-ttn-status.is-missing,.admin-status-running){background:#fff0e4;color:#87501b}
 .fleet-workspace :is(.admin-status-failed,.state-overdue .maintenance-status){background:#fae9e8;color:#9e3029}
 .fleet-workspace :is(.trip-route-arrow,.fleet-point-number.is-current){color:#ff5112}
-.fleet-workspace :is(.driver-settings summary,.driver-settings>div,.driver-task,.driver-document-workspace,.docs-upload-card,.docs-archive-card){border-color:#e1e5e9}
+.fleet-workspace :is(.driver-settings .driver-menu-trigger,.driver-settings>[data-driver-menu-panel],.driver-task,.driver-document-workspace,.docs-upload-card,.docs-archive-card){border-color:#e1e5e9}
 .fleet-workspace.driver-mode :is(.driver-doc-picker,.driver-saved-docs,.driver-trip-footer,.docs-kind-picker,.docs-old-trips){background:#f7f8fa;border-color:#e1e5e9}
 .fleet-workspace.driver-mode :is(.driver-page-title,.driver-stop>p,.docs-point b,.docs-archive-route){color:#20242a}
 .fleet-workspace.driver-mode :is(.driver-action,.driver-small-button,.driver-settings button,.driver-settings a){font-family:'MTruck Manrope','Segoe UI',sans-serif}
@@ -63,7 +63,7 @@
 .fleet-workspace .vehicle-queue-choice label{min-height:36px;line-height:1.4;color:#303a41}
 .fleet-workspace :is(.ux-field input,.ux-field select,.ux-field textarea):focus-visible{outline:2px solid #d9460e;outline-offset:2px;border-color:#d9460e}
 .fleet-workspace :is(.ttn-notifications-panel,.driver-notifications-panel,.vehicle-menu-panel){transform-origin:top right}
-@media(prefers-reduced-motion:no-preference){.fleet-workspace :is(.ttn-notifications[open] .ttn-notifications-panel,.driver-notifications[open] .driver-notifications-panel,.vehicle-menu[open] .vehicle-menu-panel){animation:mtruck-panel-in .18s ease-out both}@keyframes mtruck-panel-in{from{opacity:0;transform:translateY(-5px)}to{opacity:1;transform:translateY(0)}}}
+@media(prefers-reduced-motion:no-preference){.fleet-workspace :is(.ttn-notifications[open] .ttn-notifications-panel,.driver-notifications[data-open="true"] .driver-notifications-panel,.vehicle-menu[open] .vehicle-menu-panel){animation:mtruck-panel-in .18s ease-out both}@keyframes mtruck-panel-in{from{opacity:0;transform:translateY(-5px)}to{opacity:1;transform:translateY(0)}}}
 @media(prefers-reduced-motion:reduce){.fleet-workspace :is(.fleet-vehicle,.queue-item,.vehicle-queue-choice){transition:none!important}.fleet-workspace :is(.ttn-notifications-panel,.driver-notifications-panel,.vehicle-menu-panel){animation:none!important}}
 @media(max-width:600px){.fleet-workspace .vehicle-queue .queue-item{padding:12px}.fleet-workspace .vehicle-queue-choice label{min-height:44px}}
 

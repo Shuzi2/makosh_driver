@@ -135,13 +135,18 @@ def documents_screen(request):
         from .routes import signed_expression
         own = own.filter(status='completed').annotate(all_signed=signed_expression()).filter(all_signed=False)
     selected = request.GET.get('trip')
-    if selected:
-        trip = get_object_or_404(own,pk=selected) if selected.isdigit() else None
-        if trip is None:
-            from django.http import Http404
-            raise Http404
-    else:
-        trip = own.filter(status__in=Trip.ACTIVE).first() or Trip.ordered_queue(own.filter(status='queued')).first() or own.first()
+    if not selected:
+        from django.core.paginator import Paginator
+        page = Paginator(own.prefetch_related('stops','documents').order_by('-planned_date','-id'), 20).get_page(request.GET.get('page'))
+        return render(request, 'fleet/driver_document_list.html', {
+            'driver_update_version': version, 'documents_screen': True,
+            'document_trips': [document_trip_overview(trip) for trip in page.object_list],
+            'page_obj': page, 'missing_only': missing_only,
+        })
+    trip = get_object_or_404(own,pk=selected) if selected.isdigit() else None
+    if trip is None:
+        from django.http import Http404
+        raise Http404
     choices = list(own.prefetch_related('stops','documents').order_by('-planned_date','-id')[:100])
     if trip and trip not in choices: choices.insert(0,trip)
     from .routes import route_document_status

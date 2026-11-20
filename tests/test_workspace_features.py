@@ -506,6 +506,30 @@ class WorkspaceFeaturesTests(TestCase):
         self.assertContains(response,'Додати ТТН з підписом');self.assertNotContains(response,'пров. Пирятинський, 23')
         self.assertEqual(self.client.get(reverse('driver_documents'),{'trip':foreign.pk}).status_code,404)
 
+    def test_driver_documents_opens_trip_list_and_selected_trip_has_return_link(self):
+        first=self.trip();second=self.trip()
+        foreign=self.trip();foreign.driver=self.other;foreign.save()
+        self.client.force_login(self.driver)
+        page=self.client.get(reverse('driver_documents'))
+        self.assertEqual([item['trip'].pk for item in page.context['document_trips']],[second.pk,first.pk])
+        self.assertContains(page,'Оберіть рейс')
+        self.assertContains(page,f'?trip={first.pk}')
+        self.assertNotContains(page,f'?trip={foreign.pk}')
+        self.assertNotContains(page,'data-driver-upload')
+        selected=self.client.get(reverse('driver_documents'),{'trip':first.pk})
+        self.assertContains(selected,'До списку рейсів')
+        self.assertEqual(selected.context['trip'].pk,first.pk)
+        self.assertEqual(self.client.get(reverse('driver_documents'),{'trip':foreign.pk}).status_code,404)
+
+    def test_driver_document_list_can_reach_older_trips(self):
+        trips=[self.trip() for _ in range(22)]
+        self.client.force_login(self.driver)
+        first=self.client.get(reverse('driver_documents'))
+        second=self.client.get(reverse('driver_documents'),{'page':2})
+        self.assertEqual(first.context['page_obj'].paginator.count,22)
+        self.assertEqual(len(first.context['document_trips']),20)
+        self.assertIn(trips[0].pk,[item['trip'].pk for item in second.context['document_trips']])
+
     def test_document_overview_keeps_cancelled_route_names_and_legacy_signed_state(self):
         from fleet.driver_views import document_trip_overview
         trip=self.trip(status='cancelled',route_enabled=True);stop=self.stop(trip);stop.state='cancelled';stop.save()
