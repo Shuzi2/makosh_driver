@@ -40,6 +40,7 @@ class User(AbstractUser):
     full_name = models.CharField("ПІБ", max_length=150)
     role = models.CharField("Роль", max_length=16, choices=Role.choices, default=Role.DRIVER)
     must_change_password = models.BooleanField(default=True)
+    can_delete_test_trips = models.BooleanField('Може видаляти тестові рейси', default=False)
     rest_started_at = models.DateTimeField(null=True,blank=True)
     rest_changed_at = models.DateTimeField(default=timezone.now)
     objects = UserManager()

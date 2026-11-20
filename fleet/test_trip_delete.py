@@ -18,10 +18,25 @@ import hashlib
 logger=logging.getLogger(__name__)
 
 def can_delete_test_trip(user):
-    configured=str(getattr(settings,'TEST_TRIP_DELETE_OWNER_ID','')).strip()
-    phone=str(getattr(settings,'TEST_TRIP_DELETE_OWNER_PHONE','')).strip()
-    return bool(user.is_authenticated and user.is_active and user.role=='admin' and configured.isascii()
-                and configured.isdigit() and str(user.pk)==configured and phone and user.phone==phone)
+    return bool(user.is_authenticated and user.is_active and user.role=='admin' and user.can_delete_test_trips)
+
+@login_required
+@require_http_methods(['POST'])
+def account_test_trip_permission(request, pk):
+    if not request.user.is_superuser or not request.user.is_active:
+        raise PermissionDenied
+    from .models import User
+    account = get_object_or_404(User, pk=pk)
+    enabled = request.POST.get('enabled') == '1'
+    if enabled and (account.role != User.Role.ADMIN or not account.is_active):
+        messages.error(request, 'Дозвіл можна надати лише активному адміністратору.')
+    elif account.can_delete_test_trips != enabled:
+        account.can_delete_test_trips = enabled
+        account.save(update_fields=['can_delete_test_trips'])
+        AuditEvent.objects.create(actor=request.user, action='Змінено дозвіл видалення тестових рейсів',
+                                  detail=f'{account.full_name} ({account.phone}): {"надано" if enabled else "забрано"}')
+        messages.success(request, 'Дозвіл оновлено.')
+    return redirect('account_detail', pk=pk)
 
 def _file_names(trip):
     docs=list(Document.all_objects.filter(trip=trip).values_list('file',flat=True))

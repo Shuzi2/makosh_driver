@@ -16,7 +16,7 @@ from fleet.models import AuditEvent, Trip, User, Vehicle
                    STORAGES={'default':{'BACKEND':'django.core.files.storage.FileSystemStorage'},'staticfiles':{'BACKEND':'django.contrib.staticfiles.storage.StaticFilesStorage'}})
 class TestTripDeletionTests(TestCase):
     def setUp(self):
-        self.owner=User.objects.create_user('+380501111001',password='owner-test-password',pk=101,role='admin',full_name='Власник',must_change_password=False)
+        self.owner=User.objects.create_user('+380501111001',password='owner-test-password',pk=101,role='admin',full_name='Власник',must_change_password=False,can_delete_test_trips=True)
         self.admin=User.objects.create_user('+380501111002',role='admin',full_name='Інший',must_change_password=False)
         self.driver=User.objects.create_user('+380501111003',role='driver',full_name='Водій',must_change_password=False)
         self.vehicle=Vehicle.objects.create(plate='TESTDELETE',kind='tent',odometer_km=150540,odometer_updated_at=timezone.now())
@@ -30,6 +30,33 @@ class TestTripDeletionTests(TestCase):
             self.assertEqual(self.client.get(url).status_code,403)
             self.assertEqual(self.client.post(url,{'is_test':'yes','confirm':str(self.trip.pk),'password':'owner-test-password'}).status_code,403)
         self.assertTrue(Trip.objects.filter(pk=self.trip.pk).exists())
+
+    def test_explicit_permission_works_without_environment_settings(self):
+        self.owner.can_delete_test_trips = True
+        self.owner.save(update_fields=['can_delete_test_trips'])
+        self.client.force_login(self.owner)
+        with override_settings(TEST_TRIP_DELETE_OWNER_ID='', TEST_TRIP_DELETE_OWNER_PHONE=''):
+            self.assertEqual(self.client.get(reverse('trip_delete_test', args=[self.trip.pk])).status_code, 200)
+
+    def test_only_superuser_can_grant_permission(self):
+        url = reverse('account_test_trip_permission', args=[self.owner.pk])
+        self.owner.can_delete_test_trips = False
+        self.owner.save(update_fields=['can_delete_test_trips'])
+        self.client.force_login(self.admin)
+        self.assertEqual(self.client.post(url, {'enabled': '1'}).status_code, 403)
+        self.owner.refresh_from_db()
+        self.assertFalse(self.owner.can_delete_test_trips)
+        superuser = User.objects.create_superuser('+380501111004', password='test', full_name='Root')
+        self.client.force_login(superuser)
+        self.assertContains(self.client.get(reverse('account_detail', args=[self.owner.pk])), 'Надати дозвіл')
+        self.assertEqual(self.client.post(url, {'enabled': '1'}).status_code, 302)
+        self.owner.refresh_from_db()
+        self.assertTrue(self.owner.can_delete_test_trips)
+        self.assertEqual(self.client.post(url, {'enabled': '0'}).status_code, 302)
+        self.owner.refresh_from_db()
+        self.assertFalse(self.owner.can_delete_test_trips)
+        self.client.force_login(self.owner)
+        self.assertEqual(self.client.get(reverse('trip_delete_test', args=[self.trip.pk])).status_code, 403)
 
     def test_deletion_requires_exact_number_and_account_password(self):
         self.client.force_login(self.owner)
@@ -81,6 +108,8 @@ class TestTripDeletionTests(TestCase):
 
     def test_no_access_if_identity_configuration_missing(self):
         self.client.force_login(self.owner)
+        self.owner.can_delete_test_trips = False
+        self.owner.save(update_fields=['can_delete_test_trips'])
         with override_settings(TEST_TRIP_DELETE_OWNER_PHONE=''):
             self.assertEqual(self.client.get(reverse('trip_delete_test',args=[self.trip.pk])).status_code,403)
 
