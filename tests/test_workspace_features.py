@@ -242,6 +242,30 @@ class WorkspaceFeaturesTests(TestCase):
         self.client.post(reverse('trip_accept',args=[future.pk]),data)
         future.refresh_from_db();self.assertTrue(future.is_accepted)
 
+    def test_completing_trip_promotes_next_without_background_worker(self):
+        current=self.trip(status='unloading',accepted_at=timezone.now(),accepted_by=self.driver)
+        future=self.trip(status='queued')
+        self.client.force_login(self.admin)
+        with self.captureOnCommitCallbacks(execute=True):
+            self.client.post(reverse('trip_status',args=[current.pk]),{'status':'completed'})
+        future.refresh_from_db()
+        self.assertEqual(future.status,'planned');self.assertFalse(future.is_accepted)
+        self.client.force_login(self.driver)
+        self.assertContains(self.client.get(reverse('trip_detail',args=[future.pk])),reverse('trip_accept',args=[future.pk]))
+
+    def test_driver_can_check_ready_queued_trip_but_cannot_bypass_blockers(self):
+        current=self.trip(status='planned',accepted_at=timezone.now(),accepted_by=self.driver)
+        future=self.trip(status='queued')
+        self.client.force_login(self.driver)
+        url=reverse('driver_queue_check',args=[future.pk])
+        self.assertContains(self.client.get(reverse('trip_detail',args=[future.pk])),'Перевірити доступність рейсу')
+        blocked=self.client.post(url,follow=True);self.assertContains(blocked,'Авто ще виконує поточний рейс.')
+        future.refresh_from_db();self.assertEqual(future.status,'queued')
+        current.status='completed';current.completed_at=timezone.now();current.save()
+        self.client.post(url);future.refresh_from_db();self.assertEqual(future.status,'planned')
+        self.assertFalse(future.is_accepted)
+        self.client.force_login(self.other);self.assertEqual(self.client.post(url).status_code,404)
+
     def test_accepted_queue_waits_for_vehicle_and_earlier_trip(self):
         from fleet.queue_promotion import promote_ready
         self.vehicle.in_repair=True;self.vehicle.save(update_fields=['in_repair'])
@@ -546,6 +570,28 @@ class WorkspaceFeaturesTests(TestCase):
         self.assertContains(selected,'До списку рейсів')
         self.assertEqual(selected.context['trip'].pk,first.pk)
         self.assertEqual(self.client.get(reverse('driver_documents'),{'trip':foreign.pk}).status_code,404)
+
+    def test_driver_trip_has_short_guidance_progress_and_document_actions(self):
+        trip=self.trip(status='planned',accepted_at=timezone.now(),accepted_by=self.driver)
+        self.client.force_login(self.driver)
+        page=self.client.get(reverse('trip_detail',args=[trip.pk]))
+        self.assertContains(page,'aria-label="Етапи рейсу"')
+        self.assertNotContains(page,'Перебіг поточної точки')
+        self.assertContains(page,'Логіст побачить, що ви прибули на завантаження.')
+        self.assertContains(page,f'?trip={trip.pk}&amp;kind=ttn')
+        self.assertContains(page,f'?trip={trip.pk}&amp;kind=signed_ttn')
+
+    def test_driver_past_trips_are_collapsed_and_keep_documents_in_documents_screen(self):
+        trip=self.trip(status='completed',completed_at=timezone.now())
+        doc=self.document(trip); doc.kind='ttn'; doc.save()
+        self.client.force_login(self.driver)
+        page=self.client.get(reverse('driver_trips'))
+        self.assertContains(page,'<details class="driver-trips-group driver-past-trips">')
+        self.assertContains(page,reverse('trip_detail',args=[trip.pk]))
+        self.assertNotContains(page,'ТТН завантаження:')
+        self.assertNotContains(page,'Підписана ТТН розвантаження:')
+        self.assertNotContains(page,'Переглянути документи')
+        self.assertNotContains(page,'Усі завдання в одному місці')
 
     def test_driver_trip_list_groups_own_trips_and_links_to_details(self):
         current=self.trip(status='planned'); future=self.trip(status='queued'); past=self.trip()

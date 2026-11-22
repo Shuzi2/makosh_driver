@@ -40,7 +40,7 @@ MODERATOR_ROUTES = {
 
 DRIVER_ROUTE_PERMISSIONS = {
     'dashboard': 'view_trips', 'trip_list': 'view_trips', 'trip_detail': 'view_trips',
-    'driver_updates': 'view_trips', 'driver_trips': 'view_trips', 'driver_finish': 'view_trips', 'driver_settlement_search': 'change_stages',
+    'driver_updates': 'view_trips', 'driver_trips': 'view_trips', 'driver_queue_check': 'change_stages', 'driver_finish': 'view_trips', 'driver_settlement_search': 'change_stages',
     'driver_delay': 'report_delays', 'driver_expense': 'manage_expenses', 'expense_receipt': 'manage_expenses',
     'driver_documents': 'upload_documents', 'document_download': 'upload_documents',
     'driver_service': 'view_trips', 'driver_service_create': 'view_trips', 'driver_service_edit': 'view_trips',

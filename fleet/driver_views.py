@@ -1,14 +1,14 @@
 """Two everyday screens for drivers, scoped to their own trips."""
 from django.contrib.auth.decorators import login_required
 from django.core.exceptions import PermissionDenied
-from django.shortcuts import get_object_or_404, render
+from django.shortcuts import get_object_or_404, render, redirect
 from .forms import DocumentForm
 from .models import Trip
-from .trip_stages import status_label, stage_progress, driver_stage_progress, LABELS
+from .trip_stages import status_label, stage_progress, driver_stage_progress, driver_journey_progress, LABELS
 import hashlib
 import json
 from django.http import JsonResponse
-from django.views.decorators.http import require_GET
+from django.views.decorators.http import require_GET, require_POST
 from django.db.models import Count, Max, Q
 from django.db.models import Case, When, DateTimeField
 from django.db.models.functions import Cast, Coalesce
@@ -39,6 +39,24 @@ ACTIONS = {
     'road': ('Приїхав на розвантаження','unloading'),
     'unloading': ('Розвантажився — завершити рейс','completed'),
 }
+
+@login_required
+@require_POST
+def driver_queue_check(request,pk):
+    if request.user.role != 'driver': raise PermissionDenied
+    from .views import trips_for, queue_block_reason
+    from .queue_promotion import promote_trip
+    from django.contrib import messages
+    trip=get_object_or_404(trips_for(request.user),pk=pk)
+    if trip.status=='queued':
+        if promote_trip(trip.pk):
+            messages.success(request,'Рейс став поточним. Тепер його можна прийняти.')
+        else:
+            trip.refresh_from_db()
+            if trip.status=='queued':
+                reason=queue_block_reason(trip) or 'Перевірте закріплення водія за авто у логіста.'
+                messages.error(request,'Рейс ще в черзі. '+reason)
+    return redirect('trip_detail',pk=pk)
 
 
 @login_required
@@ -92,6 +110,17 @@ def driver_home(request, selected_trip=None):
         past.ttn_all_complete=all(item['state']=='complete' for item in past.ttn_summary)
     steps=stage_progress(trip)
     driver_steps=driver_stage_progress(trip, route_data.get('driver_simple_route',True))
+    journey_simple=not trip or not trip.route_enabled or route_data.get('driver_simple_route',True)
+    journey_steps=driver_journey_progress(trip, journey_simple)
+    action_hint=''
+    if trip and trip.is_active and not needs_acceptance:
+        if trip.route_enabled:
+            stop=route_data.get('current_stop');mode=route_data.get('stop_mode')
+            if mode=='depart' and route_data.get('route_last_stop'): action_hint='Відкриється форма завершення рейсу.'
+            elif mode=='depart': action_hint='Підтвердите виїзд і побачите наступну точку маршруту.'
+            elif stop: action_hint='Логіст побачить, що ви прибули до цієї точки.'
+        else:
+            action_hint={'planned':'Логіст побачить, що ви прибули на завантаження.','loading':'Підтвердите виїзд із завантаження.','road':'Логіст побачить, що ви прибули на розвантаження.','unloading':'Відкриється форма завершення рейсу.'}.get(trip.status,'')
     return render(request,'fleet/driver_home.html',{
         **route_data,'driver_update_version':version,'operation_permissions':operation_permissions,
         'pending_cancellations':own.filter(status='cancelled',cancellation_notice_required=True,cancellation_acknowledged_at__isnull=True).select_related('cancelled_by','created_by').order_by('-cancelled_at','-pk'),
@@ -99,7 +128,7 @@ def driver_home(request, selected_trip=None):
         'vehicle_current_trip':trip.vehicle.trips.filter(status__in=Trip.ACTIVE).exclude(pk=trip.pk).exists() if trip and trip.status=='queued' else False, 'status_label':label,
         'needs_acceptance':needs_acceptance, 'history_trips':history_trips, 'history_count':history.count(),
         'history_selected':bool(trip and trip.status in ['completed','cancelled']),
-        'action_label':action, 'next_status':next_status, 'next_label':next_label, 'steps':steps, 'driver_steps':driver_steps,
+        'action_label':action, 'next_status':next_status, 'next_label':next_label, 'steps':steps, 'driver_steps':driver_steps, 'journey_steps':journey_steps, 'journey_simple':journey_simple, 'action_hint':action_hint,
         'queue_block_reason':queue_block_reason(trip) if trip and trip.status=='queued' else '',
         'viewing_other':bool(selected_trip and active and selected_trip.pk!=active.pk),
         'cards':[], 'vehicle_count':0, 'assignment_form':None, 'events':[],

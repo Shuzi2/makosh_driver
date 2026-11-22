@@ -1,7 +1,7 @@
 """Driver economics: imported historical snapshots and live trip calculations."""
 from decimal import Decimal
 from django import forms
-from django.http import JsonResponse
+from django.http import JsonResponse, HttpResponse
 from django.views.decorators.http import require_POST
 from django.template.defaultfilters import floatformat
 from django.contrib.auth.decorators import login_required
@@ -58,11 +58,20 @@ class ArchivePricesForm(forms.Form):
     fuel_price=forms.DecimalField(label='Ціна пального, грн/л',required=False,min_value=0,max_digits=8,decimal_places=2)
     adblue_price=forms.DecimalField(label='Ціна AdBlue, грн/л',required=False,min_value=0,max_digits=8,decimal_places=2)
 
+ARCHIVE_EDIT_FIELDS = ('daily_rate','days','bonus_per_km','adblue_price','fuel_price','adblue_rate','depreciation_per_km','credit_per_km','revenue','extra_cost')
+
+class ArchiveEditForm(forms.Form):
+    revision=forms.CharField(widget=forms.HiddenInput)
+
+for _key in ARCHIVE_EDIT_FIELDS:
+    _field=TripEconomics._meta.get_field('price' if _key == 'revenue' else _key).formfield(required=False)
+    ArchiveEditForm.base_fields[_key]=_field
+
 def guard(request):
     if not request.user.manages_fleet: raise PermissionDenied
 
 def archive_prices_corrected(row):
-    return any(key in row.report_corrections for key in ('revenue','fuel_price','adblue_price'))
+    return any(key in row.report_corrections for key in ARCHIVE_EDIT_FIELDS)
 
 def history_totals(rows):
     from .management.commands.import_driver_reports import number
@@ -111,10 +120,10 @@ def period_totals(history, trips):
         corrected = archive_prices_corrected(row)
         archived.append({
             'kilometers': number(values.get('kilometers')), 'days': number(values.get('days')), 'fuel_litres': number(raw_ab),
-            'revenue': number(values.get('revenue')), 'wage': number(values.get('driver_cost')),
+            'revenue': number(values.get('revenue')), 'wage': None if corrected else number(values.get('driver_cost')),
             'fuel_cost': None if corrected else number(values.get('fuel_cost')),
             'adblue_cost': None if corrected else number(values.get('adblue_cost')),
-            'depreciation_cost': number(values.get('depreciation_cost')), 'extra_cost': number(values.get('extra_cost')),
+            'depreciation_cost': None if corrected else number(values.get('depreciation_cost')), 'extra_cost': number(values.get('extra_cost')),
             'expenses': None if corrected else number(values.get('expenses')), 'profit': None if corrected else number(values.get('profit')),
         })
     live = []
@@ -218,13 +227,15 @@ def report_context(driver=None,label=None,period=None,query=''):
     defaults=DriverEconomicsDefaults.objects.filter(pk=1).first() or DriverEconomicsDefaults()
     for row in historical:
         row.display=(row.display_values or row.source_values) | row.report_corrections
-        row.result_cells=make_result_cells(row.display,"archive")
+        row.result_cells=make_result_cells({} if archive_prices_corrected(row) else row.display,"archive")
         row.source_number = row.source_raw[0] if row.source_sheet != 'Базюнь підмінний Зерновоз' and row.source_raw else None
         row.extra_ab = next((item['value'] for item in row.display.get('extra_columns', []) if item.get('column') == 'AB'), None)
         from .management.commands.import_driver_reports import number
         raw=row.source_values | row.report_corrections
         row.prices_form=ArchivePricesForm(initial={'revision':archive_revision(row),**{key:number(raw.get(key)) for key in ('revenue','fuel_price','adblue_price')}})
         row.prices_corrected=archive_prices_corrected(row)
+        row.edit_form=ArchiveEditForm(prefix=f'archive-{row.pk}', initial={'revision':archive_revision(row),**{key:number(raw.get(key)) for key in ARCHIVE_EDIT_FIELDS}})
+        row.correction_list=[{'label':row.edit_form.fields[key].label,'original':row.source_values.get(key),'current':row.report_corrections[key]} for key in ARCHIVE_EDIT_FIELDS if key in row.report_corrections]
     for trip in trips:
         try: trip.report_economics=trip.economics;trip.report_finances=finances(trip,trip.economics)
         except TripEconomics.DoesNotExist:
@@ -267,16 +278,21 @@ def edit_archive_prices(request,pk):
     guard(request)
     with transaction.atomic():
         row=get_object_or_404(DriverReportHistory.objects.select_for_update(),pk=pk)
-        form=ArchivePricesForm(request.POST)
+        inline=request.POST.get('inline') == '1'
+        prefix=f'archive-{row.pk}'
+        form=ArchiveEditForm(request.POST,prefix=prefix) if inline else ArchivePricesForm(request.POST)
         if not form.is_valid():
+            if inline: return HttpResponse('<ul class="errorlist"><li>Перевірте значення: введіть невід’ємні числа з не більш ніж двома знаками після коми.</li></ul>',status=400)
             messages.error(request,'Перевірте ціни: введіть невід’ємні числа з не більш ніж двома знаками після коми.')
         elif form.cleaned_data['revision']!=archive_revision(row):
+            if inline: return HttpResponse('<ul class="errorlist"><li>Цей запис уже змінено. Оновіть сторінку.</li></ul>',status=409)
             messages.error(request,'Цей запис уже змінено. Оновіть сторінку та повторіть редагування.')
         else:
             corrections=dict(row.report_corrections)
             from .management.commands.import_driver_reports import number
             changes=[]
-            for key in ('revenue','fuel_price','adblue_price'):
+            for key in (ARCHIVE_EDIT_FIELDS if inline else ('revenue','fuel_price','adblue_price')):
+                if inline and f'{prefix}-{key}' not in request.POST: continue
                 value=form.cleaned_data[key]
                 previous=number((row.source_values | corrections).get(key))
                 if value != previous:
@@ -288,7 +304,7 @@ def edit_archive_prices(request,pk):
             if changes:
                 row.report_corrections=corrections;row.save(update_fields=['report_corrections'])
                 from .views import event
-                event(request.user,'Виправлено ціни архівного звіту',detail=f'{row.source_sheet}, рядок {row.source_row}: '+ '; '.join(changes))
+                event(request.user,'Виправлено дані архівного звіту',detail=f'{row.source_sheet}, рядок {row.source_row}: '+ '; '.join(changes))
                 messages.success(request,'Ціни виправлено. Початкові дані збережено; архівні підсумки потрібно перевірити.')
             else: messages.info(request,'Ціни не змінилися.')
     if row.driver_id: return redirect('driver_report_detail',pk=row.driver_id)

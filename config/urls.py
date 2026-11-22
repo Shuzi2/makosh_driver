@@ -100,6 +100,7 @@ path('trips/<int:pk>/substitute/',views.driver_substitution,name='driver_substit
 path('trips/<int:pk>/edit/',views.trip_edit,name='trip_edit'),
 path('driver/updates/',driver_views.driver_updates,name='driver_updates'),
 path('driver/trips/',driver_views.driver_trips,name='driver_trips'),
+path('driver/trips/<int:pk>/check-queue/',driver_views.driver_queue_check,name='driver_queue_check'),
 path('driver/trips/<int:pk>/action/',driver_requests.driver_action,name='driver_action'),
 path('driver/trips/<int:pk>/finish/',driver_requests.driver_finish,name='driver_finish'),
 path('trips/<int:pk>/accept/',views.trip_accept,name='trip_accept'),

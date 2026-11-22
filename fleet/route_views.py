@@ -79,6 +79,8 @@ def stop_action(request,pk):
         if trip.status=='completed':
             from .driver_reports import snapshot_completion_rates
             snapshot_completion_rates(trip)
+            from .queue_promotion import promote_after_completion
+            transaction.on_commit(lambda vehicle_id=trip.vehicle_id, driver_id=trip.driver_id: promote_after_completion(vehicle_id,driver_id),robust=True)
         sync_trip(trip)
         if trip.status=='completed': audit(request.user,trip,'Завершено рейс','Усі точки маршруту виконано.')
     return trip_response(request,pk)

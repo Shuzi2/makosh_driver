@@ -490,6 +490,8 @@ def trip_status(request,pk):
         if target=='completed':
             from .driver_reports import snapshot_completion_rates
             snapshot_completion_rates(trip)
+            from .queue_promotion import promote_after_completion
+            transaction.on_commit(lambda vehicle_id=trip.vehicle_id, driver_id=trip.driver_id: promote_after_completion(vehicle_id,driver_id),robust=True)
         if previous_tons!=trip.actual_tons: event(request.user,'Оновлено фактичну вагу',trip,f'{previous_tons if previous_tons is not None else "не вказано"} → {trip.actual_tons} т')
         event(request.user,"Змінено статус",trip,f"{dict(Trip.Status.choices)[previous]} → {trip.get_status_display()}")
         if target=='cancelled': event(request.user,'Скасовано рейс — очікуємо ознайомлення',trip,trip.cancellation_reason or 'Без пояснення для водія. Очікуємо підтвердження ознайомлення.')

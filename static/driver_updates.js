@@ -46,11 +46,11 @@
         return;
       }
       show('');
-    }catch(error){setConnection('unavailable','Зв’язок із сервером недоступний');show('Зв’язку із сервером немає. Нові рейси з’являться після відновлення зв’язку.');}
+    }catch(error){setConnection('unavailable','Немає зв’язку із сервером');show('Зв’язку немає. Нові рейси з’являться після його відновлення.');}
     finally{clearTimeout(timer);checking=false;}
   }
   setInterval(check,5000);
   document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible')check();else setConnection('checking','Перевірка зв’язку призупинена');});
-  window.addEventListener('offline',()=>setConnection('unavailable','Зв’язок із сервером недоступний'));
+  window.addEventListener('offline',()=>setConnection('unavailable','Немає зв’язку з інтернетом'));
   window.addEventListener('online',check);
 })();

@@ -10,7 +10,7 @@ from django.contrib.auth.decorators import login_required
 from django.views.decorators.http import require_GET
 from django.utils import timezone
 from .models import User, DriverReportHistory
-from .driver_reports import guard, report_context, PeriodForm
+from .driver_reports import guard, report_context, PeriodForm, RESULT_FIELDS
 from .management.commands.import_driver_reports import KEYS, number
 
 HEADERS=['№ / рейс','Дата','Кілометраж, км','Ставка водія, грн/день','Кількість днів','Бонус водія, грн/км','Ціна AdBlue, грн/л','Ціна пального, грн/л','Витрата пального, л/100 км','Витрата AdBlue, л/100 км','Амортизація, грн/км','Кредит, грн/км','Ціна рейсу, грн','Додаткові витрати, грн','Переїзд','Точка завантаження','Точка розвантаження','Маршрут','Витрати на пальне, грн','Витрати на AdBlue, грн','Амортизація і кредит, грн','Оплата водія, грн','Загальні витрати, грн','Прибуток, грн','Собівартість, грн/км','Прибуток, грн/км','Маржа, %','Пальне, л · AB','Примітки']
@@ -26,11 +26,12 @@ def archive_row(row):
     for key in KEYS:
         display=row.display.get(key)
         value=display if key in TEXT_KEYS else raw.get(key)
+        if row.prices_corrected and key in {v[0] for v in RESULT_FIELDS.values()}: value=None
         if key not in TEXT_KEYS and value not in (None,''):
             value=numeric(value)
         values.append(value)
     notes=list(row.anomalies)
-    if row.prices_corrected: notes.append('Ціни виправлено; історичні підсумки не перераховано')
+    if row.prices_corrected: notes.append('Дані виправлено; історичні підсумки не перераховано')
     return [row.source_number,*values,numeric(row.extra_ab) if row.extra_ab not in (None,'') else None,'; '.join(notes)]
 
 def live_row(trip):

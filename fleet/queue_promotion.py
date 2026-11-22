@@ -1,5 +1,6 @@
 """Promote the next queued trip when both resources and queue order allow it."""
 from django.db import IntegrityError, transaction
+from django.db.models import Q
 from django.utils import timezone
 from .models import AuditEvent, Trip, User, Vehicle
 
@@ -40,3 +41,9 @@ def promote_trip(pk):
 def promote_ready():
     ids=Trip.ordered_queue(Trip.objects.filter(status='queued')).values_list('pk',flat=True)
     for pk in list(ids): promote_trip(pk)
+
+def promote_after_completion(vehicle_id,driver_id):
+    """Check queues affected by the freed vehicle or driver, in queue order."""
+    candidates=Trip.objects.filter(status='queued').filter(Q(vehicle_id=vehicle_id)|Q(driver_id=driver_id))
+    for pk in list(Trip.ordered_queue(candidates).values_list('pk',flat=True)):
+        promote_trip(pk)

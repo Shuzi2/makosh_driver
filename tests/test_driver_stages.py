@@ -1,6 +1,6 @@
 from types import SimpleNamespace
 from django.test import SimpleTestCase
-from fleet.trip_stages import driver_stage_progress
+from fleet.trip_stages import driver_stage_progress, driver_journey_progress
 
 
 class DriverStagesTests(SimpleTestCase):
@@ -39,3 +39,15 @@ class DriverStagesTests(SimpleTestCase):
     def test_no_active_trip(self):
         self.assertEqual(driver_stage_progress(None),[])
         self.assertEqual(driver_stage_progress(self.trip('cancelled')),[])
+
+    def test_simple_journey_marks_only_confirmed_work(self):
+        for status,accepted,current,done in [('planned',False,None,[]),('planned',True,'loading',[]),('loading',True,'loading',[]),('road',True,'road',['loading']),('unloading',True,'unloading',['loading','road']),('completed',True,'completed',['loading','road','unloading'])]:
+            with self.subTest(status=status,accepted=accepted):
+                steps=driver_journey_progress(self.trip(status,accepted))
+                self.assertEqual([s['key'] for s in steps if s['current']],[current] if current else [])
+                self.assertEqual([s['key'] for s in steps if s['done']],done)
+
+    def test_multi_stop_journey_uses_current_point_cycle(self):
+        stop=SimpleNamespace(kind='load',state='arrived')
+        steps=driver_journey_progress(self.trip('loading',True,stop),False)
+        self.assertEqual([s['key'] for s in steps if s['current']],['operation'])

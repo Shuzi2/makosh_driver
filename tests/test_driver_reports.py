@@ -19,6 +19,25 @@ class DriverReportsTests(TestCase):
         self.admin=User.objects.create_user('+380501234501',role='admin',full_name='Логіст',must_change_password=False)
         self.driver=User.objects.create_user('+380501234502',role='driver',full_name='Тестовий Водій',must_change_password=False)
 
+    def test_archive_inline_edit_preserves_original_and_hides_stale_results(self):
+        from fleet.driver_reports import archive_revision
+        original={'daily_rate':'1000','days':'2','bonus_per_km':'3','fuel_price':'50','adblue_price':'20','adblue_rate':'1','depreciation_per_km':'9','credit_per_km':'6','revenue':'10000','extra_cost':'0','profit':'1234','driver_cost':'2300'}
+        row=DriverReportHistory.objects.create(source_sheet='Тест',source_row=2,driver=self.driver,driver_label=self.driver.full_name,source_values=original,display_values=original)
+        self.client.force_login(self.admin)
+        response=self.client.get(reverse('driver_report_detail',args=[self.driver.pk]))
+        for key in ('daily_rate','days','bonus_per_km','fuel_price','adblue_price','adblue_rate','depreciation_per_km','credit_per_km','revenue','extra_cost'):
+            self.assertContains(response,f'data-field="{key}"')
+        prefix=f'archive-{row.pk}'
+        result=self.client.post(reverse('driver_archive_prices',args=[row.pk]),{'inline':'1',f'{prefix}-revision':archive_revision(row),f'{prefix}-daily_rate':'1200',f'{prefix}-days':'3'})
+        self.assertEqual(result.status_code,302)
+        row.refresh_from_db()
+        self.assertEqual(row.source_values,original)
+        self.assertEqual(row.report_corrections,{'daily_rate':'1200','days':'3'})
+        response=self.client.get(reverse('driver_report_detail',args=[self.driver.pk]))
+        self.assertIsNone(response.context['period_totals']['archive']['wage']['value'])
+        self.assertIsNone(response.context['period_totals']['archive']['profit']['value'])
+        self.assertContains(response,'1200')
+
     def test_period_totals_keep_archive_separate_and_exclude_missing_values(self):
         vehicle=Vehicle.objects.create(plate='SUM001',kind='tent')
         now=timezone.now()
@@ -145,7 +164,7 @@ class DriverReportsTests(TestCase):
         parser=Cells();parser.feed(html)
         self.assertEqual(len(parser.values),29)
         self.assertTrue(parser.values[0].startswith('7'))
-        self.assertEqual(parser.values[1:27],[f'value-{i}' for i in range(26)])
+        self.assertEqual([value.removesuffix('✎') for value in parser.values[1:27]],[f'value-{i}' for i in range(26)])
         self.assertEqual(parser.values[27],'189,00')
 
     def test_report_preserves_historical_values_and_separate_live_data(self):
@@ -256,7 +275,7 @@ class DriverReportsTests(TestCase):
         self.assertEqual(row.report_corrections['fuel_price'],'55')
         self.assertIsNone(history_totals([row])['profit'])
         self.assertEqual(report_insights([row],[])['historical']['margin_count'],0)
-        self.assertContains(self.client.get(reverse('driver_report_detail',args=[self.driver.pk])),'Ціни виправлено')
+        self.assertContains(self.client.get(reverse('driver_report_detail',args=[self.driver.pk])),'Дані виправлено')
         self.assertEqual(self.client.post(url,data).status_code,302)
         row.refresh_from_db();self.assertEqual(row.report_corrections['revenue'],'11000')
 

@@ -91,7 +91,7 @@
       if(!frozen){controls.forEach((c,i)=>c.disabled=originallyDisabled(c,i));metadata=readMeta();frozen=true;}
       await save();if(conflict){uploading=false;lock();return;}
       const data=new FormData(form);data.delete('file');Object.entries(metadata).forEach(([name,value])=>data.set(name,value));selected.forEach(file=>data.append('file',file));data.set('request_id',batchId);
-      lock();form.setAttribute('aria-busy','true');submit.textContent='Надсилаємо…';status.textContent='Очікуємо підтвердження збереження від сервера…';
+      lock();form.setAttribute('aria-busy','true');submit.textContent='Надсилаємо…';status.textContent='Фото надсилаються. Очікуємо підтвердження…';
       try{
         const response=await window.driverUploadPost(form.action,data,120000);
         if(response.status===413){

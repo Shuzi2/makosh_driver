@@ -28,6 +28,17 @@ def driver_stage_progress(trip, simple_route=True):
     return [{'key':key,'label':label,'current':i == index,'done':i < index}
             for i,(key,label) in enumerate(stages)]
 
+def driver_journey_progress(trip, simple_route=True):
+    """Show a compact journey only when it accurately represents the route."""
+    if not trip or trip.status in ('cancelled','queued'): return []
+    if not simple_route: return driver_stage_progress(trip,False)
+    stages=[('loading','Завантаження'),('road','Дорога'),('unloading','Розвантаження'),('completed','Завершення')]
+    key=None if trip.requires_acceptance else ('loading' if trip.status=='planned' else trip.status)
+    keys=[item[0] for item in stages]
+    index=keys.index(key) if key in keys else -1
+    return [{'key':item_key,'label':label,'current':i==index,'done':index>=0 and i<index,
+             'current_label':'Далі' if trip.status=='planned' else 'Зараз'} for i,(item_key,label) in enumerate(stages)]
+
 def elapsed_label(start, now=None):
     from django.utils import timezone
     if not start: return ''

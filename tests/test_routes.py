@@ -51,6 +51,15 @@ class RouteTests(TestCase):
         self.assertEqual(trip.actual_tons,Decimal('23.75'))
         self.assertEqual((trip.empty_distance_km,trip.loaded_distance_km,trip.distance_km),(70,350,420))
 
+    def test_route_completion_promotes_next_trip_immediately(self):
+        trip=self.final_trip()
+        future=Trip.objects.create(vehicle=self.vehicle,driver=self.driver,created_by=self.admin,status='queued',origin='А',destination='Б',cargo='Вантаж',planned_tons=1,planned_date=timezone.localdate())
+        for point in trip.stops.all(): self.upload(trip,point,kind='ttn' if point.kind=='load' else 'signed_ttn')
+        payload=self.payload(trip,empty_distance_km='0',loaded_distance_km='100',fuel_used_l='20',actual_tons='24')
+        with self.captureOnCommitCallbacks(execute=True):
+            self.assertEqual(self.client.post(reverse('driver_action',args=[trip.pk]),payload).json()['outcome'],'confirmed')
+        future.refresh_from_db();self.assertEqual(future.status,'planned');self.assertFalse(future.is_accepted)
+
     def test_completion_sums_actual_weights_for_multiple_unloading_points(self):
         trip=self.create();self.accept(trip);points=list(trip.stops.all())
         for point in points:
