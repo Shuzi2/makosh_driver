@@ -449,6 +449,7 @@ class TripStop(models.Model):
     community = models.CharField('Громада (ОТГ)',max_length=150,blank=True)
     lat = models.DecimalField('Широта',max_digits=9,decimal_places=6,null=True,blank=True,validators=[MinValueValidator(-90),MaxValueValidator(90)])
     lon = models.DecimalField('Довгота',max_digits=9,decimal_places=6,null=True,blank=True,validators=[MinValueValidator(-180),MaxValueValidator(180)])
+    google_maps_url = models.URLField('Посилання Google Maps',max_length=2048,blank=True)
     contact_name = models.CharField('Контактна особа',max_length=150,blank=True)
     contact_phone = models.CharField('Телефон',max_length=16,blank=True)
     contact_phone_alt = models.CharField('Додатковий телефон',max_length=16,blank=True)
@@ -481,7 +482,8 @@ class TripStop(models.Model):
         return {'name':name,'region':region,'district':district,'community':community,'detail':detail,'has_area':bool(region),'special':(self.settlement_code or (source['code'] if source else '')) in ['UA80000000000093317','UA85000000000065278']}
     @property
     def directions_url(self):
-        from .locations import directions_url
+        from .locations import directions_url, is_google_maps_link
+        if is_google_maps_link(self.google_maps_url): return self.google_maps_url
         return directions_url(self.address,self.lat,self.lon)
     @property
     def ttn_numbers(self):

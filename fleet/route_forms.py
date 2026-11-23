@@ -8,13 +8,19 @@ from .forms import TripForm
 
 class StopForm(forms.ModelForm):
     point_confirmed=forms.BooleanField(required=False,widget=forms.HiddenInput)
+    google_maps_confirmed=forms.BooleanField(label='Я перевірив посилання для нової адреси',required=False)
     contact_phone=forms.CharField(label='Телефон',required=False,max_length=40,widget=forms.TextInput(attrs={'type':'tel','placeholder':'+380…'}))
     contact_phone_alt=forms.CharField(label='Додатковий телефон',required=False,max_length=40,widget=forms.TextInput(attrs={'type':'tel','placeholder':'+380…'}))
     class Meta:
         model=TripStop
-        fields=['kind','address','settlement_code','settlement_name','region','district','community','lat','lon','contact_name','contact_phone','contact_phone_alt','cargo','planned_tons','actual_tons','ttn_number','notes']
-        widgets={'settlement_code':forms.HiddenInput,'settlement_name':forms.HiddenInput,'address':forms.TextInput(attrs={'placeholder':'Назва села або міста…','autocomplete':'off'}),'notes':forms.Textarea(attrs={'rows':2}),'lat':forms.NumberInput(attrs={'step':'0.000001'}),'lon':forms.NumberInput(attrs={'step':'0.000001'})}
-        help_texts={'ttn_number':'Кілька номерів — через крапку з комою. Фото прив’язуються до номера ТТН.','actual_tons':'Необов’язково. Вага саме цієї операції, якщо вона відома.'}
+        fields=['kind','address','settlement_code','settlement_name','region','district','community','lat','lon','google_maps_url','contact_name','contact_phone','contact_phone_alt','cargo','planned_tons','actual_tons','ttn_number','notes']
+        widgets={'settlement_code':forms.HiddenInput,'settlement_name':forms.HiddenInput,'address':forms.TextInput(attrs={'placeholder':'Назва села або міста…','autocomplete':'off'}),'google_maps_url':forms.URLInput(attrs={'placeholder':'https://maps.app.goo.gl/…','inputmode':'url','autocapitalize':'off'}),'notes':forms.Textarea(attrs={'rows':2}),'lat':forms.NumberInput(attrs={'step':'0.000001'}),'lon':forms.NumberInput(attrs={'step':'0.000001'})}
+        help_texts={'ttn_number':'Кілька номерів — через крапку з комою. Фото прив’язуються до номера ТТН.','actual_tons':'Необов’язково. Вага саме цієї операції, якщо вона відома.','google_maps_url':'Необов’язково. Вставте посилання з Google Maps. Якщо вказано також точку на карті, водій відкриє саме це посилання.'}
+    def clean_google_maps_url(self):
+        from .locations import is_google_maps_link
+        value=self.cleaned_data.get('google_maps_url','').strip()
+        if value and not is_google_maps_link(value): raise ValidationError('Вставте безпечне посилання на Google Maps, наприклад https://maps.app.goo.gl/…')
+        return value
     def clean_contact_phone(self): return TripForm.normalize_contact_phone(self.cleaned_data.get('contact_phone',''))
     def clean_contact_phone_alt(self): return TripForm.normalize_contact_phone(self.cleaned_data.get('contact_phone_alt',''))
     def clean(self):
@@ -47,6 +53,8 @@ class StopForm(forms.ModelForm):
         original=getattr(self,'original',{})
         if original and data.get('address')!=original['address'] and data.get('lat') is not None and (data.get('lat'),data.get('lon'))==(original['lat'],original['lon']) and not data.get('point_confirmed'):
             self.add_error('address','Адресу змінено. Повторно підтвердьте точку на карті або приберіть координати.')
+        if original and data.get('address')!=original.get('address') and data.get('google_maps_url') and data.get('google_maps_url')==original.get('google_maps_url') and not data.get('google_maps_confirmed'):
+            self.add_error('google_maps_url','Адресу змінено. Оновіть посилання, приберіть його або підтвердіть, що воно правильне.')
         numbers=[n.strip() for n in __import__('re').split(r'[,;\n]+',data.get('ttn_number','')) if n.strip()]
         if any(len(n)>100 for n in numbers): self.add_error('ttn_number','Один номер ТТН — до 100 символів.')
         return data
@@ -85,6 +93,9 @@ class RouteFormSet(BaseModelFormSet):
             old=self.original.get(form.instance.pk)
             if old and old['state'] in ['completed','arrived']:
                 if form.cleaned_data.get('DELETE') or form.cleaned_data.get('kind')!=old['kind']: raise ValidationError('Виконану або розпочату точку не можна видалити чи змінити тип операції.')
+            if old and old['state']=='completed' and self.trip and self.trip.is_active:
+                if any(form.cleaned_data.get(field)!=old[field] for field in ['address','lat','lon','google_maps_url']):
+                    raise ValidationError('Виконану точку не можна перенаправити. Змініть наступну точку маршруту.')
         if self.trip and self.trip.status in ['completed','cancelled'] and any(not f.instance.pk for f in live): raise ValidationError('До завершеного чи скасованого рейсу не можна додавати нові точки.')
         if live[0].cleaned_data['kind']!='load' or live[-1].cleaned_data['kind']!='unload': raise ValidationError('Маршрут має починатися завантаженням і закінчуватися розвантаженням.')
         balances={};total=Decimal('0')
@@ -112,6 +123,13 @@ class RouteFormSet(BaseModelFormSet):
             position+=1;old=self.original.get(stop.pk)
             stop.trip=trip;stop.position=position
             if not old or any(getattr(stop,f)!=old[f] for f in StopForm.Meta.fields+['position']):
+                redirected=bool(old and old['state']=='arrived' and any(getattr(stop,f)!=old[f] for f in ['address','lat','lon','google_maps_url']))
+                if redirected:
+                    stop.state='pending';stop.arrived_at=None
+                    from django.utils import timezone
+                    trip.status='road';trip.status_changed_at=timezone.now()
+                    trip.save(update_fields=['status','status_changed_at','updated_at'])
+                    audit(actor,trip,'Перенаправлено після прибуття',f'Водій прибув до попередньої точки: {old["address"]}. Нова точка: {stop.address}. Потрібне повторне прибуття.')
                 if old and stop.actual_tons!=old['actual_tons']: stop.weight_revision+=1
                 if old and stop.ttn_number!=old['ttn_number']: stop.documents_revision+=1
                 stop.save();refresh_signed(stop)

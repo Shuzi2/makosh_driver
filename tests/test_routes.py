@@ -2,6 +2,7 @@ from django.urls import reverse
 import importlib
 import tempfile
 import uuid
+from unittest.mock import patch
 from decimal import Decimal
 from django.apps import apps
 from django.test import TestCase,override_settings
@@ -144,6 +145,56 @@ class RouteTests(TestCase):
         response=self.client.post('/trips/new/',self.data(points))
         self.assertEqual(response.status_code,302, getattr(response,'context',None) and str(response.context['route_formset'].errors))
         return Trip.objects.latest('pk')
+    def test_google_maps_link_on_each_stop_and_coordinate_fallback(self):
+        loading='https://maps.app.goo.gl/Example123'
+        unloading='https://www.google.com/maps/place/Test/@49.23,28.46,16z'
+        points=[{'kind':'load','address':'Вінниця','cargo':'Добрива','planned_tons':24,'google_maps_url':loading},
+                {'kind':'unload','address':'Гайсин','cargo':'Добрива','planned_tons':24,'google_maps_url':unloading}]
+        trip=self.create(points);load,unload=list(trip.stops.all())
+        self.assertEqual(load.google_maps_url,loading);self.assertEqual(unload.google_maps_url,unloading)
+        self.assertEqual(load.directions_url,loading);self.assertEqual(unload.directions_url,unloading)
+        self.client.force_login(self.driver)
+        page=self.client.get(reverse('trip_detail',args=[trip.pk]))
+        self.assertContains(page,loading);self.assertContains(page,'Відкрити Google Maps')
+        load.google_maps_url='';load.lat=Decimal('49.233083');load.lon=Decimal('28.468217')
+        self.assertIn('49.233083%2C28.468217',load.directions_url)
+        load.lat=None;load.lon=None;self.assertIn('maps/search/',load.directions_url)
+
+    def test_google_maps_link_rejects_non_google_domains(self):
+        from fleet.route_forms import StopForm
+        for url in ('https://maps.app.goo.gl.evil.example/test','javascript:alert(1)','https://google.com.evil.example/maps','https://www.google.com.evil.example/maps','https://www.google.com/account'):
+            form=StopForm(data={'kind':'load','address':'Вінниця','cargo':'Добрива','planned_tons':'1','google_maps_url':url})
+            self.assertFalse(form.is_valid());self.assertIn('google_maps_url',form.errors)
+
+    def test_google_maps_link_can_be_edited_cleared_and_copied(self):
+        from fleet.route_forms import initial_stops
+        trip=self.create();data=self.edit_data(trip)
+        url='https://maps.app.goo.gl/Loading123'
+        data['stops-0-google_maps_url']=url
+        response=self.client.post(reverse('trip_edit',args=[trip.pk]),data)
+        self.assertEqual(response.status_code,302)
+        load=trip.stops.order_by('position').first();self.assertEqual(load.google_maps_url,url)
+        self.assertEqual(initial_stops(trip)[0]['google_maps_url'],url)
+        self.assertTrue(trip.events.filter(action='Оновлено точку маршруту').exists())
+        trip.refresh_from_db();data=self.edit_data(trip);data['stops-0-google_maps_url']=''
+        self.assertEqual(self.client.post(reverse('trip_edit',args=[trip.pk]),data).status_code,302)
+        load.refresh_from_db();self.assertEqual(load.google_maps_url,'')
+        self.assertIn('maps/search/',load.directions_url)
+
+    def test_google_maps_link_display_is_scoped_to_own_driver(self):
+        trip=self.create();stop=trip.stops.first();stop.google_maps_url='https://maps.app.goo.gl/PrivatePoint';stop.save(update_fields=['google_maps_url'])
+        self.client.force_login(self.other)
+        self.assertEqual(self.client.get(reverse('trip_detail',args=[trip.pk])).status_code,404)
+
+    def test_changing_address_requires_google_link_confirmation(self):
+        from fleet.route_forms import StopForm
+        url='https://maps.app.goo.gl/Loading123'
+        data={'kind':'load','address':'Інше місце','region':'Область','district':'Район','community':'Громада','cargo':'Добрива','planned_tons':'1','google_maps_url':url}
+        original={'address':'Старе місце','lat':None,'lon':None,'google_maps_url':url}
+        form=StopForm(data=data);form.original=original
+        self.assertFalse(form.is_valid());self.assertIn('google_maps_url',form.errors)
+        form=StopForm(data={**data,'google_maps_confirmed':'on'});form.original=original
+        self.assertTrue(form.is_valid(),form.errors)
     def edit_data(self,trip):
         from fleet.route_forms import StopForm
         points=[{**{f:getattr(s,f) if getattr(s,f) is not None else '' for f in StopForm.Meta.fields},'id':s.pk} for s in trip.stops.all()]
@@ -584,6 +635,54 @@ class RouteTests(TestCase):
         self.client.force_login(self.admin);data=self.edit_data(trip);data['stops-0-ORDER']='3';data['stops-2-ORDER']='1'
         self.assertEqual(self.client.post(f'/trips/{trip.pk}/edit/',data).status_code,200)
         self.assertEqual(trip.stops.first().state,'completed')
+
+    def test_redirect_after_arrival_preserves_history_and_requires_new_arrival(self):
+        trip=self.create();self.accept(trip);self.act(trip,'arrive')
+        trip.refresh_from_db();stop=trip.stops.first();old=stop.address
+        self.client.force_login(self.admin);data=self.edit_data(trip)
+        data.update({'stops-0-address':'Нова адреса','stops-0-settlement_code':'','stops-0-settlement_name':'','stops-0-region':'Область','stops-0-district':'Район','stops-0-community':'Громада'})
+        response=self.client.post(f'/trips/{trip.pk}/edit/',data)
+        self.assertEqual(response.status_code,302, (response.context['form'].errors, response.context['route_formset'].errors, response.context['route_formset'].non_form_errors()) if response.status_code == 200 else '')
+        trip.refresh_from_db();stop.refresh_from_db()
+        self.assertEqual(stop.state,'pending');self.assertIsNone(stop.arrived_at)
+        self.assertTrue(trip.events.filter(action='Перенаправлено після прибуття',detail__contains=old).exists())
+        self.assertTrue(trip.events.filter(action='Оновлено точку маршруту',detail__contains=old).exists())
+        self.assertIsNone(trip.route_notice_acknowledged_at)
+        self.client.force_login(self.driver)
+        notices=self.client.get(reverse('driver_notifications')).json()
+        self.assertTrue(any(n['type']=='route' and n['trip']==trip.pk for n in notices['items']))
+        response=self.client.post(reverse('driver_action',args=[trip.pk]),{'action':'ack_route','expected_revision':trip.updated_at.isoformat(),'request_id':str(uuid.uuid4())})
+        self.assertEqual(response.json()['outcome'],'confirmed')
+        self.assertFalse(any(n['type']=='route' for n in self.client.get(reverse('driver_notifications')).json()['items']))
+        self.assertEqual(self.act(trip,'arrive').json()['outcome'],'confirmed')
+
+    @override_settings(WEBPUSH_PUBLIC_KEY='test-public',WEBPUSH_PRIVATE_KEY='test-private',WEBPUSH_SUBJECT='mailto:test@example.com')
+    def test_redirect_while_driving_keeps_point_pending_and_notifies_driver(self):
+        from fleet.models import PushSubscription, PushDelivery
+        from fleet.push import process_deliveries
+        PushSubscription.objects.create(user=self.driver,endpoint='https://fcm.googleapis.com/fcm/send/test-route',p256dh='test',auth='test')
+        trip=self.create();self.accept(trip);trip.refresh_from_db()
+        stop=trip.stops.first();old=stop.address
+        self.client.force_login(self.admin);data=self.edit_data(trip)
+        data.update({'stops-0-address':'Інша адреса','stops-0-settlement_code':'','stops-0-settlement_name':'','stops-0-region':'Область','stops-0-district':'Район','stops-0-community':'Громада'})
+        response=self.client.post(f'/trips/{trip.pk}/edit/',data)
+        self.assertEqual(response.status_code,302)
+        self.assertTrue(PushDelivery.objects.filter(recipient=self.driver,trip=trip,kind='trip_change',status='pending').exists())
+        with patch('fleet.push.webpush') as sender: process_deliveries()
+        self.assertTrue(any('Зміни в рейсі' in call.kwargs['data'] for call in sender.call_args_list))
+        self.assertTrue(PushDelivery.objects.filter(recipient=self.driver,trip=trip,kind='trip_change',status='sent').exists())
+        stop.refresh_from_db();trip.refresh_from_db()
+        self.assertEqual(stop.state,'pending');self.assertEqual(stop.address,'Інша адреса')
+        self.assertTrue(trip.events.filter(action='Оновлено точку маршруту',detail__contains=old).exists())
+        self.client.force_login(self.driver)
+        self.assertContains(self.client.get(reverse('trip_detail',args=[trip.pk])),'Логіст оновив маршрут')
+        self.assertTrue(any(n['type']=='route' for n in self.client.get(reverse('driver_notifications')).json()['items']))
+        self.assertEqual(trip.current_stop.state,'pending')
+        response=self.client.post(reverse('driver_action',args=[trip.pk]),{'action':'ack_route','expected_revision':trip.updated_at.isoformat(),'request_id':str(uuid.uuid4())})
+        self.assertEqual(response.json()['outcome'],'confirmed')
+        trip.refresh_from_db();self.assertIsNotNone(trip.route_notice_acknowledged_at)
+        self.assertEqual(trip.current_stop.state,'pending')
+        self.assertFalse(any(n['type']=='route' for n in self.client.get(reverse('driver_notifications')).json()['items']))
     def test_copy_route_clears_actuals_documents_and_execution(self):
         trip=self.create();stop=trip.stops.first();stop.actual_tons=Decimal('9.8');stop.state='completed';stop.ttn_number='OLD';stop.save()
         response=self.client.get('/trips/new/',{'copy_from':trip.pk})

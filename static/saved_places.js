@@ -20,6 +20,7 @@
             card.querySelector('[data-settlement-field]').dispatchEvent(new CustomEvent('saved-place:select',{detail:place}));
             ['lat','lon','contact_name','contact_phone','contact_phone_alt','notes'].forEach(name=>{const input=field(name);if(input){input.value=place[name]??'';input.dispatchEvent(new Event('input',{bubbles:true}));input.dispatchEvent(new Event('change',{bubbles:true}));}});
             const extra=field('contact_phone_alt')?.closest('details');if(extra)extra.open=Boolean(place.contact_phone_alt);
+            const mapsLink=field('google_maps_url');if(mapsLink){mapsLink.value='';mapsLink.dispatchEvent(new Event('change',{bubbles:true}));}
             const confirmed=field('point_confirmed');if(confirmed)confirmed.value='true';
             picker.open=false;message.textContent='Підставлено: '+place.name;
             field('address').dispatchEvent(new Event('change',{bubbles:true}));

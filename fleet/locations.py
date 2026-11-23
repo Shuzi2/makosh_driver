@@ -3,7 +3,7 @@ import hashlib
 import json
 from datetime import timedelta
 from decimal import Decimal, InvalidOperation
-from urllib.parse import urlencode, quote
+from urllib.parse import urlencode, quote, urlsplit
 from urllib.request import Request, urlopen
 from django.conf import settings
 from django.db import transaction
@@ -11,6 +11,19 @@ from django.http import JsonResponse
 from django.utils import timezone
 from django.views.decorators.http import require_GET
 from .models import MapSearchState, MapSearchCache
+
+def is_google_maps_link(value):
+    if not value or any(ord(char)<32 for char in value) or '\\' in value: return False
+    try:
+        parsed=urlsplit(value)
+        if parsed.scheme!='https' or parsed.username is not None or parsed.password is not None or parsed.port not in (None,443): return False
+        host=(parsed.hostname or '').lower()
+        if host=='maps.app.goo.gl': return bool(parsed.path.strip('/'))
+        if host=='goo.gl': return parsed.path.startswith('/maps/')
+        if host in ('maps.google.com','maps.google.com.ua'): return True
+        return host in ('google.com','www.google.com','google.com.ua','www.google.com.ua') and (parsed.path=='/maps' or parsed.path.startswith('/maps/'))
+    except ValueError:
+        return False
 
 def directions_url(address,lat,lon):
     if lat is None or lon is None:
