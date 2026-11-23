@@ -158,6 +158,8 @@ def dashboard(request):
         queue_by_vehicle={}
         for trip in queued:
             trip.fleet_accepted_label=fleet_event_time(trip.accepted_at)
+            trip.fleet_origin_short=trip.origin.split(',')[0].strip()
+            trip.fleet_destination_short=trip.destination.split(',')[0].strip()
             queue_by_vehicle.setdefault(trip.vehicle_id, []).append(trip)
         kind=request.GET.get('kind','')
         kind=kind if kind in ('tent','grain') else ''
@@ -176,12 +178,15 @@ def dashboard(request):
                 changed=max(known) if known else None
             from .routes import fleet_route_context, fleet_ttn_summary
             summary=fleet_ttn_summary(trip)
-            cards.append({"vehicle":vehicle,"trip":trip,"route":fleet_route_context(trip),"ttn_summary":summary,"status_changed_at":changed,"status_changed_label":fleet_event_time(changed),"queue":queue_by_vehicle.get(vehicle.id, []),"repair":repair})
+            driver=trip.driver if trip else vehicle.default_driver
+            cards.append({"vehicle":vehicle,"trip":trip,"route":fleet_route_context(trip),"driver":driver,"resting":bool(driver and driver.rest_started_at),"ttn_summary":summary,"status_changed_at":changed,"status_changed_label":fleet_event_time(changed),"queue":queue_by_vehicle.get(vehicle.id, []),"repair":repair})
     template = "fleet/dashboard.html" if request.user.manages_fleet else "fleet/driver_dashboard.html"
     groups = [{"kind": group_kind, "label": label, "cards": [card for card in cards if card['vehicle'].kind == group_kind]} for group_kind, label in [('tent', 'Тенти'), ('grain', 'Зерновози')] if not kind or kind == group_kind] if request.user.manages_fleet else []
-    context={"cards":cards,"fleet_groups":groups,"fleet_kind":kind,"free_count":sum(not card['trip'] and not card['vehicle'].in_repair for card in cards),"repair_count":sum(card['vehicle'].in_repair for card in cards),"trips":active,"queued_trips":queued,"done_count":done.count(),"tons":done.aggregate(total=Sum(Coalesce("actual_tons","planned_tons")))["total"] or 0,"active_count":sum(bool(card['trip']) for card in cards),"missing_count":missing.count(),"missing":missing[:5],"today":today,"vehicle_count":len(cards)}
+    from .models import FleetCopySettings
+    copy_settings=FleetCopySettings.objects.filter(pk=1).first() or FleetCopySettings()
+    context={"cards":cards,"fleet_groups":groups,"fleet_kind":kind,"copy_settings":copy_settings,"free_count":sum(not card['trip'] and not card['vehicle'].in_repair for card in cards),"repair_count":sum(card['vehicle'].in_repair for card in cards),"rest_count":sum(card['resting'] for card in cards),"trips":active,"queued_trips":queued,"done_count":done.count(),"tons":done.aggregate(total=Sum(Coalesce("actual_tons","planned_tons")))["total"] or 0,"active_count":sum(bool(card['trip']) for card in cards),"missing_count":missing.count(),"missing":missing[:5],"today":today,"vehicle_count":len(cards)}
     if request.GET.get("live") == "1":
-        response=JsonResponse({"cards":render_to_string("fleet/dashboard_cards.html",context,request=request),"metrics":render_to_string("fleet/dashboard_metrics.html",context,request=request),"vehicle_count":len(cards)})
+        response=JsonResponse({"cards":render_to_string("fleet/dashboard_cards.html",context,request=request),"metrics":render_to_string("fleet/dashboard_metrics.html",context,request=request),"vehicle_count":len(cards),"copy_carrier":copy_settings.carrier,"copy_storage":copy_settings.storage_address})
         response["Cache-Control"]="private, no-store"
         return response
     return render(request,template,context)

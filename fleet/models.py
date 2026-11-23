@@ -38,6 +38,8 @@ class User(AbstractUser):
     username = None
     phone = models.CharField("Телефон", max_length=13, unique=True)
     full_name = models.CharField("ПІБ", max_length=150)
+    driver_license_number = models.CharField('Посвідчення водія',max_length=40,blank=True)
+    passport_number = models.CharField('Паспорт',max_length=40,blank=True)
     role = models.CharField("Роль", max_length=16, choices=Role.choices, default=Role.DRIVER)
     must_change_password = models.BooleanField(default=True)
     can_delete_test_trips = models.BooleanField('Може видаляти тестові рейси', default=False)
@@ -60,6 +62,14 @@ class User(AbstractUser):
         super().save(*args, **kwargs)
     def __str__(self):
         return self.full_name or self.phone
+
+class FleetCopySettings(models.Model):
+    carrier = models.CharField('Перевізник',max_length=200,default='МАКОШ МІНЕРАЛ 41157153')
+    storage_address = models.CharField('Місце зберігання авто',max_length=250,default='Вінницька обл., м. Гнівань, вул. Промислова, 9')
+    def save(self,*args,**kwargs):
+        self.pk=1
+        return super().save(*args,**kwargs)
+
 
 class Trailer(models.Model):
     plate = models.CharField('Номер причепа', max_length=20, unique=True)

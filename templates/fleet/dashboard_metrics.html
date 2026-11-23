@@ -1,1 +1,6 @@
-<div class="metrics fleet-metrics{% if not repair_count %} without-repairs{% endif %}"><button type="button" class="metric" data-fleet-filter="active" aria-pressed="false"><small>Авто у рейсі</small><strong>{{ active_count }}</strong></button><button type="button" class="metric" data-fleet-filter="free" aria-pressed="false"><small>Вільні авто</small><strong>{{ free_count }}</strong></button>{% if repair_count %}<button type="button" class="metric" data-fleet-filter="repair" aria-pressed="false"><small>На ремонті</small><strong>{{ repair_count }}</strong></button>{% endif %}</div>
+<div class="metrics fleet-metrics fleet-metrics-four">
+  <button type="button" class="metric" data-fleet-filter="active" aria-pressed="false"><small>У рейсі</small><strong>{{ active_count }}</strong></button>
+  <button type="button" class="metric" data-fleet-filter="free" aria-pressed="false"><small>Вільні авто</small><strong>{{ free_count }}</strong></button>
+  <button type="button" class="metric" data-fleet-filter="repair" aria-pressed="false"><small>На ремонті</small><strong>{{ repair_count }}</strong></button>
+  <button type="button" class="metric" data-fleet-filter="rest" aria-pressed="false"><small>Водій відпочиває</small><strong>{{ rest_count }}</strong></button>
+</div>

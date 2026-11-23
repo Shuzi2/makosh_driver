@@ -59,6 +59,7 @@ path('administration/metrics/', administration.metrics_data, name='admin_metrics
 path('administration/mail/', administration.mail_settings, name='admin_mail'),
 path('administration/mail/test/', administration.mail_test, name='admin_mail_test'),
 path('administration/journal/', administration.journal, name='admin_journal'),
+path('administration/copy-data/', administration.copy_data, name='admin_copy_data'),
 path('administration/roles/', administration.roles, name='admin_roles'),
 path('administration/roles/permissions/', administration.permissions_update, name='admin_permission_update'),
 path('administration/roles/moderator/', administration.moderator_permissions_update, name='admin_moderator_permissions_update'),

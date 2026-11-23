@@ -14,3 +14,14 @@ test('stage clock advances without reload and follows the recorded timestamp aft
   now+=60000;intervals[0].fn();assert.equal(clock.textContent,'3 год 21 хв');
   clock.dataset.stageSince=new Date(now).toISOString();intervals[0].fn();assert.equal(clock.textContent,'щойно');
 });
+
+test('freshly loaded cards receive the recorded elapsed time before display',()=>{
+  const now=Date.parse('2026-10-22T15:20:00Z');
+  const clock={dataset:{stageSince:'2026-10-22T13:48:00Z'},textContent:'щойно'};
+  class ClockDate extends Date{static now(){return now;}}
+  const document={querySelector(){return null;},querySelectorAll(){return []},addEventListener(){}};
+  const context={document,window:{addEventListener(){}},Date:ClockDate,setInterval(){}};
+  vm.runInNewContext(fs.readFileSync('static/app.js','utf8'),context);
+  context.updateStageClocks({querySelectorAll(){return [clock]}});
+  assert.equal(clock.textContent,'1 год 32 хв');
+});

@@ -363,7 +363,7 @@ class AccountDetailsForm(PersonNameFormMixin, forms.ModelForm):
     patronymic = forms.CharField(label='По батькові', required=False, max_length=150)
     class Meta:
         model = User
-        fields = ['full_name', 'phone', 'email']
+        fields = ['full_name', 'phone', 'email', 'driver_license_number', 'passport_number']
         labels = {'full_name': 'ПІБ', 'phone': 'Телефон', 'email': 'Електронна пошта'}
 
     def clean_phone(self):

@@ -14,6 +14,52 @@ from . import operations
 from .admin_forms import JournalFilterForm, OperationsSettingsForm, RoleForm, MailSettingsForm
 from .models import AuditEvent, DriverPermissionSettings, ModeratorPermissionSettings, MailSettings, OperationJob, OperationsMetricSample, OperationsSettings, Trip, User
 from .views import admin_required as staff_required
+from django import forms
+
+
+class FleetCopySettingsForm(forms.ModelForm):
+    class Meta:
+        from .models import FleetCopySettings
+        model=FleetCopySettings
+        fields=['carrier','storage_address']
+
+
+class DriverCopyDocumentsForm(forms.ModelForm):
+    class Meta:
+        model=User
+        fields=['driver_license_number','passport_number']
+
+
+@staff_required
+@require_http_methods(['GET','POST'])
+def copy_data(request):
+    from .models import FleetCopySettings
+    settings=FleetCopySettings.objects.filter(pk=1).first() or FleetCopySettings(pk=1)
+    settings_form=FleetCopySettingsForm(instance=settings)
+    selected=None;driver_form=None
+    if request.method=='POST':
+        if request.POST.get('action')=='settings':
+            settings_form=FleetCopySettingsForm(request.POST,instance=settings)
+            if settings_form.is_valid():
+                settings_form.save()
+                AuditEvent.objects.create(actor=request.user,action='Оновлено дані перевізника для копіювання')
+                messages.success(request,'Дані перевізника збережено.')
+                return redirect('admin_copy_data')
+        elif request.POST.get('action')=='driver':
+            driver_id=request.POST.get('driver_id','')
+            if not driver_id.isascii() or not driver_id.isdigit() or len(driver_id)>18: raise Http404
+            selected=get_object_or_404(User,pk=int(driver_id),role='driver')
+            driver_form=DriverCopyDocumentsForm(request.POST,instance=selected)
+            if driver_form.is_valid():
+                driver_form.save()
+                AuditEvent.objects.create(actor=request.user,action='Оновлено документи для копіювання',detail=selected.full_name)
+                messages.success(request,'Документи водія збережено.')
+                return redirect('admin_copy_data')
+        else:
+            raise Http404
+    drivers=User.objects.filter(role='driver').order_by('full_name','pk')
+    rows=[{'driver':driver,'form':driver_form if selected and selected.pk==driver.pk else DriverCopyDocumentsForm(instance=driver)} for driver in drivers]
+    return render(request,'fleet/admin_copy_data.html',{'settings_form':settings_form,'rows':rows})
 
 
 def _settings():

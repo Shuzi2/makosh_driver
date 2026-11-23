@@ -60,8 +60,8 @@ if(fleetHeader){
   window.addEventListener('scroll',updateHeader,{passive:true});
 }
 // Elapsed time uses the recorded stage timestamp, never the page opening time.
-function updateStageClocks(){
-  document.querySelectorAll('[data-stage-since]').forEach(clock=>{
+function updateStageClocks(root=document){
+  root.querySelectorAll('[data-stage-since]').forEach(clock=>{
     const start=Date.parse(clock.dataset.stageSince);
     if(!Number.isFinite(start))return;
     const minutes=Math.max(0,Math.floor((Date.now()-start)/60000));
@@ -77,7 +77,8 @@ function syncFleetFilters(){
   if(search){
     const query=search.value.trim().toLocaleLowerCase('uk');
     document.querySelectorAll('.searchable').forEach(card=>{
-      card.hidden=!card.textContent.toLocaleLowerCase('uk').includes(query) || Boolean(fleetFilter && card.dataset.fleetState!==fleetFilter);
+      const filterMatches=!fleetFilter || (fleetFilter==='rest' ? card.dataset.fleetRest==='1' : card.dataset.fleetState===fleetFilter);
+      card.hidden=!card.textContent.toLocaleLowerCase('uk').includes(query) || !filterMatches;
     });
     document.querySelectorAll('.fleet-group').forEach(group=>{
       const cards=[...group.querySelectorAll('.searchable')];
@@ -112,9 +113,13 @@ if (liveFleet) {
       const response=await fetch(liveFleet.dataset.fleetLiveUrl,{cache:'no-store',headers:{Accept:'application/json'},signal:AbortSignal.timeout(10000)});
       if (!response.ok || !response.headers.get('content-type')?.includes('application/json')) throw new Error('Unavailable');
       const data=await response.json();
+      if(typeof data.copy_carrier==='string')liveFleet.dataset.copyCarrier=data.copy_carrier;
+      if(typeof data.copy_storage==='string')liveFleet.dataset.copyStorage=data.copy_storage;
       // An open action menu must keep its focus and current target.
       if (!liveFleet.querySelector('.vehicle-menu[open]') && !liveFleet.contains(document.activeElement)) {
         const fragment=new DOMParser().parseFromString(data.cards,'text/html');
+        // Set elapsed times before replacing the visible cards, avoiding a flash of the placeholder.
+        updateStageClocks(fragment);
         const incoming=[...fragment.querySelectorAll('[data-vehicle-id]')];
         const existing=new Map([...liveFleet.querySelectorAll('[data-vehicle-id]')].map(card=>[card.dataset.vehicleId,card]));
         // Preserve expanded addresses for the same trip when status data refreshes.
