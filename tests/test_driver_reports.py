@@ -19,20 +19,27 @@ class DriverReportsTests(TestCase):
         self.admin=User.objects.create_user('+380501234501',role='admin',full_name='Логіст',must_change_password=False)
         self.driver=User.objects.create_user('+380501234502',role='driver',full_name='Тестовий Водій',must_change_password=False)
 
+    def test_archive_summary_and_insights_are_collapsed_by_default(self):
+        self.client.force_login(self.admin)
+        page=self.client.get(reverse('driver_report_detail',args=[self.driver.pk]))
+        self.assertContains(page,'<details class="period-summary-group archive-disclosure">')
+        self.assertContains(page,'<details class="insight-group archive-disclosure">')
+        self.assertContains(page,'Рейси сайту')
+
     def test_archive_inline_edit_preserves_original_and_hides_stale_results(self):
         from fleet.driver_reports import archive_revision
         original={'daily_rate':'1000','days':'2','bonus_per_km':'3','fuel_price':'50','adblue_price':'20','adblue_rate':'1','depreciation_per_km':'9','credit_per_km':'6','revenue':'10000','extra_cost':'0','profit':'1234','driver_cost':'2300'}
         row=DriverReportHistory.objects.create(source_sheet='Тест',source_row=2,driver=self.driver,driver_label=self.driver.full_name,source_values=original,display_values=original)
         self.client.force_login(self.admin)
         response=self.client.get(reverse('driver_report_detail',args=[self.driver.pk]))
-        for key in ('daily_rate','days','bonus_per_km','fuel_price','adblue_price','adblue_rate','depreciation_per_km','credit_per_km','revenue','extra_cost'):
+        for key in ('daily_rate','days','bonus_per_km','fuel_price','adblue_price','fuel_rate','adblue_rate','depreciation_per_km','credit_per_km','revenue','extra_cost'):
             self.assertContains(response,f'data-field="{key}"')
         prefix=f'archive-{row.pk}'
-        result=self.client.post(reverse('driver_archive_prices',args=[row.pk]),{'inline':'1',f'{prefix}-revision':archive_revision(row),f'{prefix}-daily_rate':'1200',f'{prefix}-days':'3'})
+        result=self.client.post(reverse('driver_archive_prices',args=[row.pk]),{'inline':'1',f'{prefix}-revision':archive_revision(row),f'{prefix}-daily_rate':'1200',f'{prefix}-days':'3',f'{prefix}-fuel_rate':'31.50'})
         self.assertEqual(result.status_code,302)
         row.refresh_from_db()
         self.assertEqual(row.source_values,original)
-        self.assertEqual(row.report_corrections,{'daily_rate':'1200','days':'3'})
+        self.assertEqual(row.report_corrections,{'daily_rate':'1200','days':'3','fuel_rate':'31.50'})
         response=self.client.get(reverse('driver_report_detail',args=[self.driver.pk]))
         self.assertIsNone(response.context['period_totals']['archive']['wage']['value'])
         self.assertIsNone(response.context['period_totals']['archive']['profit']['value'])
@@ -165,7 +172,7 @@ class DriverReportsTests(TestCase):
         self.assertEqual(len(parser.values),29)
         self.assertTrue(parser.values[0].startswith('7'))
         self.assertEqual([value.removesuffix('✎') for value in parser.values[1:27]],[f'value-{i}' for i in range(26)])
-        self.assertEqual(parser.values[27],'189,00')
+        self.assertEqual(parser.values[27].removesuffix('✎'),'189,00')
 
     def test_report_preserves_historical_values_and_separate_live_data(self):
         DriverReportHistory.objects.create(source_sheet='Тест (тент)',source_row=2,driver=self.driver,driver_label='Тестовий Водій',vehicle_kind='tent',source_values={'kilometers':600,'revenue':33840,'expenses':21905.8,'profit':11934},anomalies=['Прибуток не збігається з розрахунком'])
@@ -192,6 +199,172 @@ class DriverReportsTests(TestCase):
         TripExpense.objects.create(trip=trip,driver=self.driver,category='parking',amount=Decimal('10'),currency='EUR')
         self.assertIsNone(finances(trip,inputs)['total'])
 
+    def test_report_only_fuel_rate_correction_recalculates_cost_without_changing_trip(self):
+        vehicle=Vehicle.objects.create(plate='COR002',kind='tent')
+        trip=Trip.objects.create(vehicle=vehicle,driver=self.driver,created_by=self.admin,origin='А',destination='Б',cargo='Товар',planned_tons=10,planned_date=timezone.localdate(),status='completed',distance_km=100,fuel_used_l=Decimal('30'))
+        inputs=TripEconomics(trip=trip,price=10000,daily_rate=1000,days=1,bonus_per_km=3,fuel_price=50,adblue_price=20,adblue_rate=1,depreciation_per_km=9,credit_per_km=6,extra_cost=0,report_overrides={'manual_v2':{'fuel_rate':'35'}})
+        result=finances(trip,inputs)
+        self.assertEqual(result['fuel_rate'],Decimal('35'))
+        self.assertEqual(result['fuel'],Decimal('1750'))
+        self.assertEqual(result['profit'],Decimal('5430'))
+        self.assertEqual(trip.fuel_used_l,Decimal('30'))
+
+    def test_live_fuel_rate_is_corrected_only_in_report_and_can_be_reset(self):
+        vehicle=Vehicle.objects.create(plate='OVR001',kind='tent',odometer_km=1000)
+        trip=Trip.objects.create(vehicle=vehicle,driver=self.driver,created_by=self.admin,origin='А',destination='Б',cargo='Товар',planned_tons=10,planned_date=timezone.localdate(),status='completed',distance_km=100,fuel_used_l=Decimal('30'))
+        economics=TripEconomics.objects.create(trip=trip,price=10000,daily_rate=1000,days=1,bonus_per_km=3,fuel_price=50,adblue_price=20,adblue_rate=1,depreciation_per_km=9,credit_per_km=6,extra_cost=0)
+        self.client.force_login(self.admin)
+        url=reverse('driver_report_fuel_rate',args=[trip.pk])
+        response=self.client.post(url,{'revision':economics.updated_at.isoformat(),'value':'35'})
+        self.assertEqual(response.status_code,200)
+        trip.refresh_from_db();vehicle.refresh_from_db();economics.refresh_from_db()
+        self.assertEqual(trip.fuel_used_l,Decimal('30'))
+        self.assertEqual(vehicle.odometer_km,1000)
+        self.assertEqual(finances(trip,economics)['fuel'],Decimal('1750'))
+        response=self.client.post(url,{'revision':economics.updated_at.isoformat(),'value':''})
+        self.assertEqual(response.status_code,200)
+        economics.refresh_from_db();self.assertEqual(finances(trip,economics)['fuel'],Decimal('1500'))
+
+    def test_manual_formula_value_updates_dependent_report_totals(self):
+        vehicle=Vehicle.objects.create(plate='OVR002',kind='tent')
+        trip=Trip.objects.create(vehicle=vehicle,driver=self.driver,created_by=self.admin,origin='А',destination='Б',cargo='Товар',planned_tons=10,planned_date=timezone.localdate(),status='completed',distance_km=100,fuel_used_l=Decimal('30'))
+        economics=TripEconomics.objects.create(trip=trip,price=10000,daily_rate=1000,days=1,bonus_per_km=3,fuel_price=50,adblue_price=20,adblue_rate=1,depreciation_per_km=9,credit_per_km=6,extra_cost=0)
+        self.client.force_login(self.admin)
+        response=self.client.post(reverse('driver_report_fuel_rate',args=[trip.pk]),{'field':'fuel','revision':economics.updated_at.isoformat(),'value':'2000'})
+        self.assertEqual(response.status_code,200)
+        economics.refresh_from_db();trip.refresh_from_db()
+        result=finances(trip,economics)
+        self.assertEqual(result['fuel'],Decimal('2000'))
+        self.assertEqual(result['profit'],Decimal('5180'))
+        self.assertEqual(trip.fuel_used_l,Decimal('30'))
+
+    def test_report_only_distance_override_updates_calculations_not_odometer(self):
+        vehicle=Vehicle.objects.create(plate='OVR003',kind='tent',odometer_km=1000)
+        trip=Trip.objects.create(vehicle=vehicle,driver=self.driver,created_by=self.admin,origin='А',destination='Б',cargo='Товар',planned_tons=10,planned_date=timezone.localdate(),status='completed',completed_at=timezone.now(),distance_km=100,fuel_used_l=Decimal('30'))
+        econ=TripEconomics.objects.create(trip=trip,price=10000,daily_rate=1000,days=1,bonus_per_km=3,fuel_price=50,adblue_price=20,adblue_rate=1,depreciation_per_km=9,credit_per_km=6,extra_cost=0)
+        self.client.force_login(self.admin)
+        response=self.client.post(reverse('driver_report_fuel_rate',args=[trip.pk]),{'field':'kilometers','revision':econ.updated_at.isoformat(),'value':'200'})
+        self.assertEqual(response.status_code,200)
+        econ.refresh_from_db();trip.refresh_from_db();vehicle.refresh_from_db()
+        self.assertEqual(trip.distance_km,100);self.assertEqual(vehicle.odometer_km,1000)
+        self.assertEqual(finances(trip,econ)['fuel_rate'],Decimal('15'))
+        page=self.client.get(reverse('driver_report_detail',args=[self.driver.pk]))
+        self.assertEqual(page.context['period_totals']['live']['kilometers']['value'],200)
+
+    def test_archive_missing_ratios_are_calculated_without_mutating_import(self):
+        from fleet.driver_reports import archive_effective
+        source={'kilometers':1357,'revenue':135099,'expenses':'98851.15125','profit':'36247.84875'}
+        row=DriverReportHistory(source_values=source,report_corrections={})
+        result=archive_effective(row)
+        self.assertAlmostEqual(result['cost_per_km'],Decimal('72.845358'),places=5)
+        self.assertAlmostEqual(result['profit_per_km'],Decimal('26.711753'),places=5)
+        self.assertAlmostEqual(result['margin'],Decimal('26.830583'),places=5)
+        self.assertEqual(row.source_values,source)
+
+    def test_archive_formula_can_be_corrected_and_used_in_totals(self):
+        from fleet.driver_reports import archive_revision,period_totals
+        source={'kilometers':100,'revenue':10000,'expenses':4000,'profit':6000,'cost_per_km':40}
+        row=DriverReportHistory.objects.create(source_sheet='Архів',source_row=12,driver=self.driver,driver_label=self.driver.full_name,source_values=source)
+        self.client.force_login(self.admin)
+        response=self.client.post(reverse('driver_report_archive_cell',args=[row.pk]),{'field':'profit','value':'5000','revision':archive_revision(row)})
+        self.assertEqual(response.status_code,200)
+        row.refresh_from_db();self.assertEqual(row.source_values,source)
+        self.assertEqual(period_totals([row],[])['archive']['profit']['value'],Decimal('5000'))
+
+    def test_every_report_data_cell_is_editable_for_live_and_archive(self):
+        vehicle=Vehicle.objects.create(plate='GRID01',kind='tent')
+        trip=Trip.objects.create(vehicle=vehicle,driver=self.driver,created_by=self.admin,origin='А',destination='Б',cargo='Товар',planned_tons=10,planned_date=timezone.localdate(),status='completed',completed_at=timezone.now(),distance_km=100,fuel_used_l=30)
+        TripEconomics.objects.create(trip=trip)
+        DriverReportHistory.objects.create(source_sheet='Архів',source_row=1,driver=self.driver,driver_label=self.driver.full_name,source_values={'kilometers':100})
+        self.client.force_login(self.admin)
+        page=self.client.get(reverse('driver_report_detail',args=[self.driver.pk]))
+        class GridParser(HTMLParser):
+            def __init__(self): super().__init__();self.rows=[];self.row=None
+            def handle_starttag(self,tag,attrs):
+                attrs=dict(attrs)
+                if tag=='tr' and 'data-sheet-row' in attrs: self.row=[]
+                if tag=='td' and self.row is not None: self.row.append(attrs.get('class',''))
+            def handle_endtag(self,tag):
+                if tag=='tr' and self.row is not None: self.rows.append(self.row);self.row=None
+        parser=GridParser();parser.feed(page.content.decode())
+        self.assertEqual(len(parser.rows),2)
+        for row in parser.rows:
+            self.assertGreaterEqual(len(row),29)
+            self.assertTrue(all('sheet-editable' in cell or 'sheet-result-editable' in cell for cell in row[:28]),row)
+
+    def test_archive_imported_formula_is_marked_for_confirmation(self):
+        formulas=['']*27;formulas[3]='=1+1'
+        DriverReportHistory.objects.create(source_sheet='Архів',source_row=2,driver=self.driver,driver_label=self.driver.full_name,source_values={'daily_rate':2},source_formulas=formulas)
+        self.client.force_login(self.admin)
+        page=self.client.get(reverse('driver_report_detail',args=[self.driver.pk]))
+        self.assertContains(page,'data-field="daily_rate" data-formula="1"')
+
+    def test_archive_correction_recalculates_totals_and_excel_preserves_source(self):
+        from fleet.driver_reports import archive_revision
+        from fleet.driver_report_export import archive_row
+        source={'kilometers':100,'daily_rate':1000,'days':1,'bonus_per_km':3,'adblue_price':20,'fuel_price':50,'fuel_rate':30,'adblue_rate':1,'depreciation_per_km':9,'credit_per_km':6,'revenue':10000,'extra_cost':0,'fuel_cost':1500,'adblue_cost':20,'depreciation_cost':1500,'driver_cost':1300,'expenses':4320,'profit':5680}
+        row=DriverReportHistory.objects.create(source_sheet='Архів',source_row=20,driver=self.driver,driver_label=self.driver.full_name,source_values=source)
+        self.client.force_login(self.admin)
+        response=self.client.post(reverse('driver_report_archive_cell',args=[row.pk]),{'field':'fuel_rate','value':'35','revision':archive_revision(row)})
+        self.assertEqual(response.status_code,200)
+        row.refresh_from_db();self.assertEqual(row.source_values,source)
+        page=self.client.get(reverse('driver_report_detail',args=[self.driver.pk]))
+        self.assertEqual(page.context['period_totals']['archive']['fuel_cost']['value'],Decimal('1750'))
+        self.assertEqual(page.context['period_totals']['archive']['profit']['value'],Decimal('5430'))
+        exported=archive_row(page.context['historical'][0])
+        self.assertEqual(exported[18],Decimal('1750'))
+        self.assertEqual(exported[23],Decimal('5430'))
+
+    def test_report_date_filter_uses_report_correction_and_not_trip_date(self):
+        from datetime import date
+        vehicle=Vehicle.objects.create(plate='GRID02',kind='tent')
+        trip=Trip.objects.create(vehicle=vehicle,driver=self.driver,created_by=self.admin,origin='А',destination='Б',cargo='Товар',planned_tons=10,planned_date=timezone.localdate(),status='completed',completed_at=timezone.now(),distance_km=100)
+        econ=TripEconomics.objects.create(trip=trip)
+        self.client.force_login(self.admin)
+        response=self.client.post(reverse('driver_report_fuel_rate',args=[trip.pk]),{'field':'date','value':'01.01.2020','revision':econ.updated_at.isoformat()})
+        self.assertEqual(response.status_code,200)
+        detail=self.client.get(reverse('driver_report_detail',args=[self.driver.pk]),{'start':'2020-01-01','end':'2020-01-01'})
+        self.assertEqual(detail.context['trip_count'],1)
+        self.assertEqual(detail.context['trips'][0].report_fields['date'],'01.01.2020')
+        trip.refresh_from_db();self.assertNotEqual(timezone.localtime(trip.completed_at).date(),date(2020,1,1))
+
+    def test_archive_multiple_formula_corrections_conflict_and_restore(self):
+        from fleet.driver_reports import archive_revision,archive_effective
+        source={'kilometers':100,'revenue':10000,'expenses':4000,'profit':6000}
+        row=DriverReportHistory.objects.create(source_sheet='Архів',source_row=30,driver=self.driver,driver_label=self.driver.full_name,source_values=source)
+        url=reverse('driver_report_archive_cell',args=[row.pk]);old=archive_revision(row)
+        self.client.force_login(self.driver)
+        self.assertEqual(self.client.post(url,{'field':'profit','value':'5000','revision':old}).status_code,403)
+        self.client.force_login(self.admin)
+        self.assertEqual(self.client.post(url,{'field':'profit','value':'5000','revision':old}).status_code,200)
+        self.assertEqual(self.client.post(url,{'field':'kilometers','value':'200','revision':old}).status_code,409)
+        row.refresh_from_db();self.assertEqual(archive_effective(row)['profit_per_km'],Decimal('50'))
+        self.assertEqual(self.client.post(url,{'field':'profit','value':'','revision':archive_revision(row)}).status_code,200)
+        row.refresh_from_db();self.assertEqual(archive_effective(row)['profit'],6000)
+        self.assertEqual(row.source_values,source)
+
+    def test_live_report_corrections_flow_to_export_and_not_trip(self):
+        from fleet.driver_report_export import live_row
+        vehicle=Vehicle.objects.create(plate='GRID03',kind='tent',odometer_km=1000)
+        trip=Trip.objects.create(vehicle=vehicle,driver=self.driver,created_by=self.admin,origin='А',destination='Б',cargo='Товар',planned_tons=10,planned_date=timezone.localdate(),status='completed',completed_at=timezone.now(),distance_km=100,fuel_used_l=30)
+        econ=TripEconomics.objects.create(trip=trip,price=10000,daily_rate=1000,days=1,bonus_per_km=3,fuel_price=50,adblue_price=20,adblue_rate=1,depreciation_per_km=9,credit_per_km=6,extra_cost=0)
+        self.client.force_login(self.admin);url=reverse('driver_report_fuel_rate',args=[trip.pk])
+        for field,value in [('kilometers','200'),('loading','м. Нове Місто'),('fuel','2000')]:
+            econ.refresh_from_db()
+            self.assertEqual(self.client.post(url,{'field':field,'value':value,'revision':econ.updated_at.isoformat()}).status_code,200)
+        page=self.client.get(reverse('driver_report_detail',args=[self.driver.pk]));exported=live_row(page.context['trips'][0])
+        self.assertEqual(exported[2],Decimal('200'));self.assertEqual(exported[15],'м. Нове Місто')
+        self.assertEqual(exported[18],Decimal('2000'))
+        trip.refresh_from_db();vehicle.refresh_from_db()
+        self.assertEqual(trip.distance_km,100);self.assertEqual(trip.origin,'А');self.assertEqual(vehicle.odometer_km,1000)
+
+    def test_manual_margin_is_used_in_weighted_report_insights(self):
+        from fleet.driver_reports import report_insights
+        vehicle=Vehicle.objects.create(plate='GRID04',kind='tent')
+        trip=Trip.objects.create(vehicle=vehicle,driver=self.driver,created_by=self.admin,origin='А',destination='Б',cargo='Товар',planned_tons=10,planned_date=timezone.localdate(),status='completed',completed_at=timezone.now(),distance_km=100,fuel_used_l=30)
+        TripEconomics.objects.create(trip=trip,price=10000,report_overrides={'manual_v2':{'margin':'25'}})
+        self.assertEqual(report_insights([], [trip])['live']['margin'],Decimal('25'))
+
     def test_calculated_columns_are_read_only_and_ignore_old_overrides(self):
         vehicle=Vehicle.objects.create(plate='COR001',kind='tent')
         trip=Trip.objects.create(vehicle=vehicle,driver=self.driver,created_by=self.admin,origin='А',destination='Б',cargo='Товар',planned_tons=10,planned_date=timezone.localdate(),status='completed',distance_km=100,fuel_used_l=Decimal('30'))
@@ -201,8 +374,7 @@ class DriverReportsTests(TestCase):
         self.client.force_login(self.admin)
         self.assertEqual(self.client.post(f'/report/result/live/{trip.pk}/',{'field':'fuel','value':'1'}).status_code,404)
         page=self.client.get(reverse('driver_report_detail',args=[self.driver.pk]))
-        self.assertContains(page,'sheet-result-readonly')
-        self.assertNotContains(page,'sheet-result-editable')
+        self.assertContains(page,'data-field="fuel"')
         inputs.refresh_from_db();self.assertEqual(inputs.report_overrides,{'fuel':'1'})
 
     def test_preview_calculates_without_saving_and_checks_permissions(self):
@@ -275,7 +447,7 @@ class DriverReportsTests(TestCase):
         self.assertEqual(row.report_corrections['fuel_price'],'55')
         self.assertIsNone(history_totals([row])['profit'])
         self.assertEqual(report_insights([row],[])['historical']['margin_count'],0)
-        self.assertContains(self.client.get(reverse('driver_report_detail',args=[self.driver.pk])),'Дані виправлено')
+        self.assertContains(self.client.get(reverse('driver_report_detail',args=[self.driver.pk])),'Виправлено у звіті')
         self.assertEqual(self.client.post(url,data).status_code,302)
         row.refresh_from_db();self.assertEqual(row.report_corrections['revenue'],'11000')
 

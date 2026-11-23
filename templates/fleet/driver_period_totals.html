@@ -4,9 +4,9 @@
     <article class="period-summary-group"><h3>Рейси сайту <small>{{ trip_count }} рейсів</small></h3><div class="period-summary-grid">
       {% for item in period_totals.live.values %}<div class="period-summary-metric"><small>{{ item.label }}</small><strong>{% if item.value != None %}{{ item.value|floatformat:2 }} <em>{{ item.unit }}</em>{% else %}—{% endif %}</strong><span>{% if item.missing %}Дані є для {{ item.known }} із {{ trip_count }}{% elif trip_count %}Усі рейси враховано{% else %}Немає рейсів{% endif %}</span></div>{% endfor %}
     </div></article>
-    <article class="period-summary-group"><h3>Архів таблиці <small>{{ history_count }} записів</small></h3><div class="period-summary-grid">
+    <details class="period-summary-group archive-disclosure"><summary><span>Архів таблиці <small>{{ history_count }} записів</small></span><span class="archive-disclosure-toggle" aria-hidden="true"></span></summary><div class="period-summary-grid">
       {% for item in period_totals.archive.values %}<div class="period-summary-metric"><small>{% if item.key == 'fuel_litres' %}Пальне за таблицею{% else %}{{ item.label }}{% endif %}</small><strong>{% if item.value != None %}{{ item.value|floatformat:2 }} <em>{{ item.unit }}</em>{% else %}—{% endif %}</strong><span>{% if item.missing %}Дані є для {{ item.known }} із {{ history_count }}{% elif history_count %}Усі записи враховано{% else %}Немає записів{% endif %}</span></div>{% endfor %}
-    </div></article>
+    </div></details>
   </div>
-  <p class="period-summary-note">Архів і рейси сайту не додаються разом, оскільки можуть повторюватися. Оплата на сайті — ставка за дні та бонус за кілометри; в архіві — збережене значення колонки оплати водія. Архівне пальне — значення колонки AB, яке може бути розрахунковим. Для рейсів без збережених ставок суми не припускаються. В архіві виправлені ціни можуть виключати витрати й прибуток. Ставки та відсотки не підсумовуються.</p>
+  <p class="period-summary-note">Архів і рейси сайту не додаються разом, оскільки можуть повторюватися. Оплата на сайті — ставка за дні та бонус за кілометри; в архіві — збережене значення колонки оплати водія. Архівне пальне — значення колонки AB, яке може бути розрахунковим. Для рейсів без збережених ставок суми не припускаються. Виправлені значення враховуються в підсумках; якщо для перерахунку бракує даних, показник не включається. Ставки та відсотки не підсумовуються.</p>
 </section>

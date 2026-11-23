@@ -12,6 +12,32 @@ from django.shortcuts import get_object_or_404,render,redirect
 from django.contrib import messages
 from .models import DriverReportHistory,Trip,TripEconomics,DriverEconomicsDefaults,User
 
+def report_kilometers(trip,inputs):
+    manual=((inputs.report_overrides or {}).get('manual_v2',{}) if inputs else {})
+    return Decimal(str(manual['kilometers'])) if 'kilometers' in manual else (Decimal(trip.distance_km) if trip.distance_km is not None else None)
+
+def report_date(row,kind):
+    from datetime import date
+    from django.utils import timezone
+    if kind=='archive':
+        value=(row.report_corrections or {}).get('date')
+        fallback=row.trip_date
+    else:
+        try: value=(row.economics.report_overrides or {}).get('manual_v2',{}).get('date')
+        except TripEconomics.DoesNotExist: value=None
+        fallback=timezone.localtime(row.completed_at).date() if row.completed_at else None
+    if value:
+        try: return date.fromisoformat(value)
+        except ValueError: return fallback
+    return fallback
+
+def in_report_period(row,kind,period):
+    if period and period.is_bound and not period.is_valid(): return False
+    if not period or not period.is_valid(): return True
+    value=report_date(row,kind)
+    start,end=period.cleaned_data.get('start'),period.cleaned_data.get('end')
+    return (not start and not end) or (value is not None and (not start or value>=start) and (not end or value<=end))
+
 def finances(trip,inputs):
     expenses=[item for item in trip.expenses.all() if item.category!='fuel']
     other_uah=sum((item.amount for item in expenses if item.currency=='UAH'),Decimal('0'))
@@ -19,20 +45,26 @@ def finances(trip,inputs):
     if inputs is None:
         km=Decimal(trip.distance_km) if trip.distance_km is not None else None
         return {'other_uah':other_uah,'foreign':foreign,'fuel_rate':trip.fuel_used_l/km*100 if trip.fuel_used_l is not None and km else None}
-    km=Decimal(trip.distance_km) if trip.distance_km is not None else None
+    km=report_kilometers(trip,inputs)
     def product(*values):
         if any(value is None for value in values): return None
         total=Decimal('1')
         for value in values: total*=value
         return total
-    fuel=product(trip.fuel_used_l,inputs.fuel_price)
-    adblue=product(km,inputs.adblue_rate,inputs.adblue_price,Decimal('.01'))
-    depreciation=product(km,inputs.depreciation_per_km+inputs.credit_per_km) if inputs.depreciation_per_km is not None and inputs.credit_per_km is not None else None
-    wage=(product(inputs.daily_rate,inputs.days)+product(km,inputs.bonus_per_km)) if all(x is not None for x in (inputs.daily_rate,inputs.days,km,inputs.bonus_per_km)) else None
+    manual=(inputs.report_overrides or {}).get('manual_v2',{})
+    def corrected(key,value):
+        return Decimal(str(manual[key])) if key in manual else value
+    rate_override=manual.get('fuel_rate')
+    rate_override=Decimal(str(rate_override)) if rate_override is not None else None
+    report_fuel=product(km,rate_override,Decimal('.01')) if rate_override is not None else corrected('fuel_litres',trip.fuel_used_l)
+    fuel=corrected('fuel',product(report_fuel,inputs.fuel_price))
+    adblue=corrected('adblue',product(km,inputs.adblue_rate,inputs.adblue_price,Decimal('.01')))
+    depreciation=corrected('depreciation',product(km,inputs.depreciation_per_km+inputs.credit_per_km) if inputs.depreciation_per_km is not None and inputs.credit_per_km is not None else None)
+    wage=corrected('wage',(product(inputs.daily_rate,inputs.days)+product(km,inputs.bonus_per_km)) if all(x is not None for x in (inputs.daily_rate,inputs.days,km,inputs.bonus_per_km)) else None)
     parts=[fuel,adblue,depreciation,wage,inputs.extra_cost,other_uah]
-    total=sum(parts,Decimal('0')) if not foreign and all(x is not None for x in parts) else None
-    profit=inputs.price-total if inputs.price is not None and total is not None else None
-    return {'fuel':fuel,'adblue':adblue,'depreciation':depreciation,'wage':wage,'other_uah':other_uah,'foreign':foreign,'total':total,'profit':profit,'cost_per_km':total/km if total is not None and km else None,'profit_per_km':profit/km if profit is not None and km else None,'margin':profit/inputs.price*100 if profit is not None and inputs.price else None,'fuel_rate':trip.fuel_used_l/km*100 if trip.fuel_used_l is not None and km else None}
+    total=corrected('total',sum(parts,Decimal('0')) if not foreign and all(x is not None for x in parts) else None)
+    profit=corrected('profit',inputs.price-total if inputs.price is not None and total is not None else None)
+    return {'fuel':fuel,'report_fuel_litres':report_fuel,'adblue':adblue,'depreciation':depreciation,'wage':wage,'other_uah':other_uah,'foreign':foreign,'total':total,'profit':profit,'cost_per_km':corrected('cost_per_km',total/km if total is not None and km else None),'profit_per_km':corrected('profit_per_km',profit/km if profit is not None and km else None),'margin':corrected('margin',profit/inputs.price*100 if profit is not None and inputs.price else None),'fuel_rate':rate_override if rate_override is not None else (report_fuel/km*100 if report_fuel is not None and km else None)}
 
 
 # The archive keys are intentionally kept separate from the live calculation keys.
@@ -42,6 +74,11 @@ RESULT_FIELDS = {
     'total': ('expenses', 'Загальні витрати'), 'profit': ('profit', 'Прибуток'),
     'cost_per_km': ('cost_per_km', 'Собівартість'), 'profit_per_km': ('profit_per_km', 'Прибуток на кілометр'),
     'margin': ('margin', 'Маржа'),
+}
+REPORT_LABELS={key:label for key,(_archive,label) in RESULT_FIELDS.items()} | {
+    'fuel_rate':'Витрата пального, л/100 км','kilometers':'Пробіг, км','fuel_litres':'Пальне, л',
+    'report_number':'Номер у звіті','source_number':'Номер у звіті','date':'Дата','empty_route':'Переїзд',
+    'loading':'Точка завантаження','unloading':'Точка розвантаження','route':'Маршрут',
 }
 
 def make_result_cells(values, kind):
@@ -58,26 +95,85 @@ class ArchivePricesForm(forms.Form):
     fuel_price=forms.DecimalField(label='Ціна пального, грн/л',required=False,min_value=0,max_digits=8,decimal_places=2)
     adblue_price=forms.DecimalField(label='Ціна AdBlue, грн/л',required=False,min_value=0,max_digits=8,decimal_places=2)
 
-ARCHIVE_EDIT_FIELDS = ('daily_rate','days','bonus_per_km','adblue_price','fuel_price','adblue_rate','depreciation_per_km','credit_per_km','revenue','extra_cost')
+ARCHIVE_EDIT_FIELDS = ('daily_rate','days','bonus_per_km','adblue_price','fuel_price','fuel_rate','adblue_rate','depreciation_per_km','credit_per_km','revenue','extra_cost')
 
 class ArchiveEditForm(forms.Form):
     revision=forms.CharField(widget=forms.HiddenInput)
 
 for _key in ARCHIVE_EDIT_FIELDS:
-    _field=TripEconomics._meta.get_field('price' if _key == 'revenue' else _key).formfield(required=False)
+    _field=(forms.DecimalField(label='Витрата пального, л/100 км',required=False,min_value=0,max_digits=7,decimal_places=2)
+            if _key == 'fuel_rate' else TripEconomics._meta.get_field('price' if _key == 'revenue' else _key).formfield(required=False))
     ArchiveEditForm.base_fields[_key]=_field
 
 def guard(request):
     if not request.user.manages_fleet: raise PermissionDenied
 
-def archive_prices_corrected(row):
-    return any(key in row.report_corrections for key in ARCHIVE_EDIT_FIELDS)
+def archive_effective(row):
+    """Preserve the imported snapshot and recalculate only affected or missing values."""
+    from .management.commands.import_driver_reports import number
+    values=dict(row.source_values or {}) | dict(row.report_corrections or {})
+    if 'fuel_litres' not in values:
+        values['fuel_litres']=next((item.get('value') for item in (row.display_values or {}).get('extra_columns',[]) if item.get('column')=='AB'),None)
+    changed=set(row.report_corrections or {})
+    def n(key): return number(values.get(key))
+    def product(*items):
+        if any(item is None for item in items): return None
+        result=Decimal('1')
+        for item in items: result*=item
+        return result
+    def derived(key,deps,compute):
+        if key in changed: return
+        if n(key) is None or changed.intersection(deps):
+            values[key]=compute()
+            if changed.intersection(deps): changed.add(key)
+    def ratio(a,b,factor=1):
+        x,y=n(a),n(b)
+        return x/y*factor if x is not None and y else None
+    derived('fuel_litres',('kilometers','fuel_rate'),lambda:product(n('kilometers'),n('fuel_rate'),Decimal('.01')))
+    derived('fuel_cost',('kilometers','fuel_rate','fuel_price','fuel_litres'),lambda:product(n('fuel_litres'),n('fuel_price')))
+    derived('adblue_cost',('kilometers','adblue_rate','adblue_price'),lambda:product(n('kilometers'),n('adblue_rate'),n('adblue_price'),Decimal('.01')))
+    derived('depreciation_cost',('kilometers','depreciation_per_km','credit_per_km'),lambda:product(n('kilometers'),n('depreciation_per_km')+n('credit_per_km')) if n('depreciation_per_km') is not None and n('credit_per_km') is not None else None)
+    derived('driver_cost',('daily_rate','days','kilometers','bonus_per_km'),lambda:n('daily_rate')*n('days')+n('kilometers')*n('bonus_per_km') if all(n(k) is not None for k in ('daily_rate','days','kilometers','bonus_per_km')) else None)
+    def total():
+        parts=[n(k) for k in ('fuel_cost','adblue_cost','depreciation_cost','driver_cost','extra_cost')]
+        return sum(parts,Decimal('0')) if all(p is not None for p in parts) else None
+    derived('expenses',('fuel_cost','adblue_cost','depreciation_cost','driver_cost','extra_cost'),total)
+    derived('profit',('revenue','expenses'),lambda:n('revenue')-n('expenses') if n('revenue') is not None and n('expenses') is not None else None)
+    derived('cost_per_km',('expenses','kilometers'),lambda:ratio('expenses','kilometers'))
+    derived('profit_per_km',('profit','kilometers'),lambda:ratio('profit','kilometers'))
+    derived('margin',('profit','revenue'),lambda:ratio('profit','revenue',100))
+    return values
+
+@login_required
+@require_POST
+def edit_archive_cell(request,pk):
+    guard(request)
+    from .management.commands.import_driver_reports import KEYS
+    field=request.POST.get('field','')
+    text_fields={'date','empty_route','loading','unloading','route','source_number'}
+    if field not in set(KEYS)|{'fuel_litres','source_number'}: return JsonResponse({'error':'Невідоме поле.'},status=400)
+    form=forms.Form(request.POST)
+    form.fields['revision']=forms.CharField()
+    form.fields['value']=(forms.DateField(required=False,input_formats=['%d.%m.%Y','%Y-%m-%d']) if field=='date' else forms.CharField(required=False,max_length=500,strip=True) if field in text_fields else forms.DecimalField(required=False,max_digits=14,decimal_places=2,min_value=None if field in ('profit','profit_per_km','margin') else 0))
+    if not form.is_valid(): return JsonResponse({'error':'Перевірте введене значення.'},status=400)
+    with transaction.atomic():
+        row=get_object_or_404(DriverReportHistory.objects.select_for_update(),pk=pk)
+        if form.cleaned_data['revision']!=archive_revision(row): return JsonResponse({'error':'Запис змінився. Оновіть сторінку.'},status=409)
+        corrections=dict(row.report_corrections or {})
+        before=corrections.get(field)
+        value=form.cleaned_data['value']
+        if value is None or value=='': corrections.pop(field,None)
+        else: corrections[field]=str(value)
+        row.report_corrections=corrections;row.save(update_fields=['report_corrections'])
+        from .views import event
+        event(request.user,'Виправлено клітинку архівного звіту',detail=f'{row.source_sheet}, рядок {row.source_row}: {field}: {before or "оригінал"} → {value if value not in (None, "") else "оригінал"}')
+        return JsonResponse({'revision':archive_revision(row)})
 
 def history_totals(rows):
     from .management.commands.import_driver_reports import number
     result={}
     for key in ('kilometers','revenue','expenses','profit'):
-        values=[None if key in ('expenses','profit') and archive_prices_corrected(row) else number((row.source_values | row.report_corrections).get(key)) for row in rows]
+        values=[number(archive_effective(row).get(key)) for row in rows]
         valid=[value for value in values if value is not None]
         result[key]=sum(valid,Decimal('0')) if valid else None
         result[key+'_missing']=len(values)-len(valid)
@@ -115,16 +211,15 @@ def period_totals(history, trips):
         return result
     archived = []
     for row in history:
-        values = row.source_values | row.report_corrections
-        raw_ab = next((item.get('value') for item in (row.display_values or {}).get('extra_columns', []) if item.get('column') == 'AB'), None)
-        corrected = archive_prices_corrected(row)
+        values = archive_effective(row)
+        raw_ab = values.get('fuel_litres')
         archived.append({
             'kilometers': number(values.get('kilometers')), 'days': number(values.get('days')), 'fuel_litres': number(raw_ab),
-            'revenue': number(values.get('revenue')), 'wage': None if corrected else number(values.get('driver_cost')),
-            'fuel_cost': None if corrected else number(values.get('fuel_cost')),
-            'adblue_cost': None if corrected else number(values.get('adblue_cost')),
-            'depreciation_cost': None if corrected else number(values.get('depreciation_cost')), 'extra_cost': number(values.get('extra_cost')),
-            'expenses': None if corrected else number(values.get('expenses')), 'profit': None if corrected else number(values.get('profit')),
+            'revenue': number(values.get('revenue')), 'wage': number(values.get('driver_cost')),
+            'fuel_cost': number(values.get('fuel_cost')),
+            'adblue_cost': number(values.get('adblue_cost')),
+            'depreciation_cost': number(values.get('depreciation_cost')), 'extra_cost': number(values.get('extra_cost')),
+            'expenses': number(values.get('expenses')), 'profit': number(values.get('profit')),
         })
     live = []
     for trip in trips:
@@ -132,7 +227,7 @@ def period_totals(history, trips):
         except TripEconomics.DoesNotExist: economics = None
         result = finances(trip, economics)
         live.append({
-            'kilometers': number(trip.distance_km), 'days': economics.days if economics else None, 'fuel_litres': number(trip.fuel_used_l),
+            'kilometers': report_kilometers(trip,economics), 'days': economics.days if economics else None, 'fuel_litres': result.get('report_fuel_litres',number(trip.fuel_used_l)),
             'revenue': economics.price if economics else None, 'wage': result.get('wage'),
             'fuel_cost': result.get('fuel'), 'adblue_cost': result.get('adblue'),
             'depreciation_cost': result.get('depreciation'), 'extra_cost': economics.extra_cost if economics else None,
@@ -154,8 +249,9 @@ def report_insights(history, trips):
                 if profit < 0: result['loss_count']+=1
             if km is not None and km>0 and revenue is not None:
                 revenue_sum+=revenue;revenue_km+=km;result['revenue_km_count']+=1
-            if revenue is not None and revenue>0 and profit is not None:
-                margin_revenue+=revenue; margin_profit+=profit;result['margin_count']+=1
+            margin=item.get('margin')
+            if revenue is not None and revenue>0 and margin is not None:
+                margin_revenue+=revenue; margin_profit+=revenue*margin/100;result['margin_count']+=1
             if km is not None and km>0 and litres is not None:
                 fuel_l+=litres;fuel_km+=km;result['fuel_count']+=1
         result.update(revenue_per_km=revenue_sum/revenue_km if revenue_km else None,
@@ -164,15 +260,14 @@ def report_insights(history, trips):
         return result
     historic=[]
     for row in history:
-        values=row.source_values | row.report_corrections
-        ab=next((entry.get('value') for entry in (row.display_values or {}).get('extra_columns',[]) if entry.get('column')=='AB'),None)
-        historic.append({'km':number(values.get('kilometers')),'revenue':number(values.get('revenue')),'profit':None if archive_prices_corrected(row) else number(values.get('profit')),'litres':number(ab)})
+        values=archive_effective(row)
+        historic.append({'km':number(values.get('kilometers')),'revenue':number(values.get('revenue')),'profit':number(values.get('profit')),'margin':number(values.get('margin')),'litres':number(values.get('fuel_litres'))})
     live=[]
     for trip in trips:
         try: economics=trip.economics
         except TripEconomics.DoesNotExist: economics=None
         result=finances(trip,economics)
-        live.append({'km':number(trip.distance_km),'revenue':economics.price if economics else None,'profit':result.get('profit'),'litres':number(trip.fuel_used_l)})
+        live.append({'km':report_kilometers(trip,economics),'revenue':economics.price if economics else None,'profit':result.get('profit'),'margin':result.get('margin'),'litres':result.get('report_fuel_litres',number(trip.fuel_used_l))})
     return {'historical':calculate(historic),'live':calculate(live)}
 
 @login_required
@@ -182,15 +277,8 @@ def overview(request):
     period=PeriodForm(request.GET or None)
     history_query=DriverReportHistory.objects.all()
     trip_query=Trip.objects.filter(status='completed').select_related('economics').prefetch_related('expenses')
-    if period.is_bound:
-        if period.is_valid():
-            for field,value in period.cleaned_data.items():
-                if value:
-                    lookup='gte' if field=='start' else 'lte'
-                    history_query=history_query.filter(**{f'trip_date__{lookup}':value})
-                    trip_query=trip_query.filter(**{f'completed_at__date__{lookup}':value})
-        else: history_query=history_query.none();trip_query=trip_query.none()
-    historical=list(history_query);completed=list(trip_query)
+    historical=[row for row in history_query if in_report_period(row,'archive',period)]
+    completed=[trip for trip in trip_query if in_report_period(trip,'live',period)]
     by_driver={};live_driver={};unlinked={}
     for item in historical:
         if item.driver_id: by_driver.setdefault(item.driver_id,[]).append(item)
@@ -198,9 +286,17 @@ def overview(request):
     for item in completed: live_driver.setdefault(item.driver_id,[]).append(item)
     rows=[{'driver':user,'historical':len(by_driver.get(user.pk,[])),'live':len(live_driver.get(user.pk,[])), 'history_sums':history_totals(by_driver.get(user.pk,[])), 'live_finance':live_financial_totals(live_driver.get(user.pk,[]))} for user in users]
     unmatched=[{'driver_label':label,'count':len(items)} for label,items in unlinked.items()]
-    live_totals={'km':sum((t.distance_km for t in completed if t.distance_km is not None),0) if any(t.distance_km is not None for t in completed) else None,'fuel':sum((t.fuel_used_l for t in completed if t.fuel_used_l is not None),Decimal('0')) if any(t.fuel_used_l is not None for t in completed) else None}
+    live_km=[];live_fuel=[]
+    for trip in completed:
+        try: economics=trip.economics
+        except TripEconomics.DoesNotExist: economics=None
+        km=report_kilometers(trip,economics);result=finances(trip,economics)
+        fuel=result.get('report_fuel_litres',trip.fuel_used_l)
+        if km is not None: live_km.append(km)
+        if fuel is not None: live_fuel.append(fuel)
+    live_totals={'km':sum(live_km,Decimal('0')) if live_km else None,'fuel':sum(live_fuel,Decimal('0')) if live_fuel else None}
     insights=report_insights(historical,completed)
-    return render(request,'fleet/driver_reports.html',{'drivers':rows,'unmatched':unmatched,'history_total':len(historical),'live_total':len(completed),'history_sums':history_totals(historical),'live_sums':live_totals,'live_finance':live_financial_totals(completed),'insight_groups':[('Архів таблиці',insights['historical']),('Рейси сайту',insights['live'])],'period':period,'warning_count':sum(bool(row.anomalies) or archive_prices_corrected(row) for row in historical)})
+    return render(request,'fleet/driver_reports.html',{'drivers':rows,'unmatched':unmatched,'history_total':len(historical),'live_total':len(completed),'history_sums':history_totals(historical),'live_sums':live_totals,'live_finance':live_financial_totals(completed),'insight_groups':[('Архів таблиці',insights['historical']),('Рейси сайту',insights['live'])],'period':period,'warning_count':sum(bool(row.anomalies) or bool(row.report_corrections) for row in historical)})
 
 class PeriodForm(forms.Form):
     start=forms.DateField(label='З',required=False,widget=forms.DateInput(format='%Y-%m-%d',attrs={'type':'date'}))
@@ -214,28 +310,39 @@ class PeriodForm(forms.Form):
 def report_context(driver=None,label=None,period=None,query=''):
     historical=DriverReportHistory.objects.filter(driver=driver) if driver else DriverReportHistory.objects.filter(driver__isnull=True,driver_label=label)
     trips=Trip.objects.filter(status='completed',driver=driver).select_related('vehicle','driver','economics').prefetch_related('expenses').order_by('-completed_at','-pk') if driver else Trip.objects.none()
-    if period and period.is_valid():
-        for field,value in period.cleaned_data.items():
-            if value:
-                lookup='gte' if field=='start' else 'lte'
-                historical=historical.filter(**{f'trip_date__{lookup}':value})
-                trips=trips.filter(**{f'completed_at__date__{lookup}':value})
-    elif period and period.is_bound:
-        historical=historical.none();trips=trips.none()
-    historical=list(historical)
-    trips=list(trips)
+    historical=[row for row in historical if in_report_period(row,'archive',period)]
+    trips=[trip for trip in trips if in_report_period(trip,'live',period)]
     defaults=DriverEconomicsDefaults.objects.filter(pk=1).first() or DriverEconomicsDefaults()
     for row in historical:
         row.display=(row.display_values or row.source_values) | row.report_corrections
-        row.result_cells=make_result_cells({} if archive_prices_corrected(row) else row.display,"archive")
-        row.source_number = row.source_raw[0] if row.source_sheet != 'Базюнь підмінний Зерновоз' and row.source_raw else None
-        row.extra_ab = next((item['value'] for item in row.display.get('extra_columns', []) if item.get('column') == 'AB'), None)
+        if 'date' in row.report_corrections and report_date(row,'archive'): row.display['date']=report_date(row,'archive').strftime('%d.%m.%Y')
+        row.report_revision=archive_revision(row)
+        effective=archive_effective(row)
+        for archive_key,_label in RESULT_FIELDS.values():
+            if row.report_corrections or row.display.get(archive_key) in (None,''):
+                row.display[archive_key]=floatformat(effective.get(archive_key),2) if effective.get(archive_key) is not None else None
+        row.result_cells=make_result_cells(row.display,"archive")
+        for cell in row.result_cells:
+            key=RESULT_FIELDS[cell['key']][0]
+            cell['field']=key;cell['manual']=row.report_corrections.get(key,'');cell['row_pk']=row.pk;cell['revision']=archive_revision(row)
+        row.source_number = row.report_corrections.get('source_number',row.source_raw[0] if row.source_sheet != 'Базюнь підмінний Зерновоз' and row.source_raw else None)
+        row.extra_ab = effective.get('fuel_litres')
         from .management.commands.import_driver_reports import number
         raw=row.source_values | row.report_corrections
         row.prices_form=ArchivePricesForm(initial={'revision':archive_revision(row),**{key:number(raw.get(key)) for key in ('revenue','fuel_price','adblue_price')}})
-        row.prices_corrected=archive_prices_corrected(row)
+        row.prices_corrected=bool(row.report_corrections)
         row.edit_form=ArchiveEditForm(prefix=f'archive-{row.pk}', initial={'revision':archive_revision(row),**{key:number(raw.get(key)) for key in ARCHIVE_EDIT_FIELDS}})
-        row.correction_list=[{'label':row.edit_form.fields[key].label,'original':row.source_values.get(key),'current':row.report_corrections[key]} for key in ARCHIVE_EDIT_FIELDS if key in row.report_corrections]
+        from .management.commands.import_driver_reports import KEYS
+        offset=0 if row.source_sheet=='Базюнь підмінний Зерновоз' else 1
+        row.report_formula={key:bool(len(row.source_formulas)>offset+i and str(row.source_formulas[offset+i]).lstrip().startswith('=')) for i,key in enumerate(KEYS)}
+        row.report_formula['source_number']=bool(offset and row.source_formulas and str(row.source_formulas[0]).lstrip().startswith('='))
+        for key in ARCHIVE_EDIT_FIELDS:
+            if row.report_formula.get(key): row.edit_form.fields[key].widget.attrs['data_formula']='1'
+            if key in row.report_corrections: row.edit_form.fields[key].widget.attrs['data_corrected']='1'
+        labels=REPORT_LABELS | {archive_key:label for archive_key,label in RESULT_FIELDS.values()}
+        row.correction_list=[{'label':row.edit_form.fields[key].label if key in row.edit_form.fields else labels.get(key,key),
+                              'original':(next((item.get('value') for item in (row.display_values or {}).get('extra_columns',[]) if item.get('column')=='AB'),None) if key=='fuel_litres' else row.source_raw[0] if key=='source_number' and row.source_raw else row.source_values.get(key)),
+                              'current':value} for key,value in row.report_corrections.items()]
     for trip in trips:
         try: trip.report_economics=trip.economics;trip.report_finances=finances(trip,trip.economics)
         except TripEconomics.DoesNotExist:
@@ -243,6 +350,33 @@ def report_context(driver=None,label=None,period=None,query=''):
             preview=economics_initial(trip,None,defaults); preview.pop("revision",None)
             trip.report_finances=finances(trip,TripEconomics(trip=trip,**preview))
         trip.result_cells=make_result_cells(trip.report_finances,"live")
+        trip.report_fuel_manual=(trip.report_economics.report_overrides or {}).get('manual_v2',{}).get('fuel_rate','') if trip.report_economics else ''
+        trip.report_revision=trip.report_economics.updated_at.isoformat() if trip.report_economics else ''
+        trip.report_kilometers=report_kilometers(trip,trip.report_economics)
+        trip.report_km_manual=(trip.report_economics.report_overrides or {}).get('manual_v2',{}).get('kilometers','') if trip.report_economics else ''
+        trip.report_manual=(trip.report_economics.report_overrides or {}).get('manual_v2',{}) if trip.report_economics else {}
+        trip.report_fields={
+            'report_number':trip.report_manual.get('report_number',f'№{trip.pk}'),
+            'date':report_date(trip,'live').strftime('%d.%m.%Y') if report_date(trip,'live') else '',
+            'empty_route':trip.report_manual.get('empty_route',f'{trip.acceptance_location} → {trip.origin}' if trip.acceptance_location else ''),
+            'loading':trip.report_manual.get('loading',trip.origin),
+            'unloading':trip.report_manual.get('unloading',trip.destination),
+            'route':trip.report_manual.get('route',f'{trip.origin} → {trip.destination}'),
+        }
+        import copy
+        base_economics=copy.copy(trip.report_economics) if trip.report_economics else None
+        if base_economics:
+            base_economics.report_overrides={key:value for key,value in (base_economics.report_overrides or {}).items() if key!='manual_v2'}
+        base_finances=finances(trip,base_economics)
+        original_values=base_finances | {'kilometers':trip.distance_km,'fuel_litres':trip.fuel_used_l,'report_number':f'№{trip.pk}',
+            'date':trip.completed_at.strftime('%d.%m.%Y') if trip.completed_at else '',
+            'empty_route':f'{trip.acceptance_location} → {trip.origin}' if trip.acceptance_location else '',
+            'loading':trip.origin,'unloading':trip.destination,'route':f'{trip.origin} → {trip.destination}'}
+        trip.correction_list=[{'label':REPORT_LABELS.get(key,key),'original':original_values.get(key),'current':value} for key,value in trip.report_manual.items()]
+        for cell in trip.result_cells:
+            cell['manual']=(trip.report_economics.report_overrides or {}).get('manual_v2',{}).get(cell['key'],'') if trip.report_economics else ''
+            cell['trip_pk']=trip.pk
+            cell['revision']=trip.report_revision
         trip.economics_form=EconomicsForm(instance=trip.report_economics,initial=economics_initial(trip,trip.report_economics,defaults),prefix=f'trip-{trip.pk}')
     import re
     def terms(value):
@@ -253,9 +387,9 @@ def report_context(driver=None,label=None,period=None,query=''):
         text=' '.join(str(v or '') for v in values).casefold()
         return all(term in text for term in search_terms)
     if search_terms:
-        historical=[row for row in historical if (str(row.source_number)==number_query.group(1) if number_query else matches(row.source_number,row.display.get('date'),row.display.get('empty_route'),row.display.get('loading'),row.display.get('unloading'),row.display.get('route')))]
+        historical=[row for row in historical if (str(row.source_number).lstrip('№# ')==number_query.group(1) if number_query else matches(row.source_number,row.display.get('date'),row.display.get('empty_route'),row.display.get('loading'),row.display.get('unloading'),row.display.get('route')))]
         from django.utils import timezone
-        trips=[trip for trip in trips if (str(trip.pk)==number_query.group(1) if number_query else matches(trip.pk,timezone.localtime(trip.completed_at).strftime('%d.%m.%Y') if trip.completed_at else '',trip.acceptance_location,trip.origin,trip.destination,trip.report_tractor_plate))]
+        trips=[trip for trip in trips if (str(trip.report_fields['report_number']).lstrip('№# ')==number_query.group(1) or str(trip.pk)==number_query.group(1) if number_query else matches(trip.report_fields['report_number'],trip.pk,trip.report_fields['date'],trip.report_fields['empty_route'],trip.report_fields['loading'],trip.report_fields['unloading'],trip.report_fields['route'],trip.report_tractor_plate))]
     insights=report_insights(historical,trips)
     return {'driver':driver,'name':driver.full_name if driver else label,'historical':historical,'trips':trips,'history_count':len(historical),'trip_count':len(trips),'history_sums':history_totals(historical),'live_finance':live_financial_totals(trips),'period_totals':period_totals(historical,trips),'insight_groups':[('Архів таблиці',insights['historical']),('Рейси сайту',insights['live'])],'period':period,'query':query}
 
@@ -317,6 +451,37 @@ class EconomicsForm(forms.ModelForm):
         fields=['price','daily_rate','days','bonus_per_km','fuel_price','adblue_price','adblue_rate','depreciation_per_km','credit_per_km','extra_cost']
         help_texts={'extra_cost':'Додаткові витрати поза витратами, які вже записав водій. Якщо таких витрат немає, введіть 0.'}
 
+@login_required
+@require_POST
+def edit_fuel_rate(request,pk):
+    guard(request)
+    field=request.POST.get('field','fuel_rate')
+    text_fields=('report_number','date','empty_route','loading','unloading','route')
+    if field not in ('fuel_rate','kilometers','fuel_litres',*text_fields,*RESULT_FIELDS): return JsonResponse({'error':'Невідоме поле.'},status=400)
+    form=forms.Form(request.POST)
+    form.fields['value']=(forms.DateField(required=False,input_formats=['%d.%m.%Y','%Y-%m-%d']) if field=='date' else forms.CharField(required=False,max_length=500) if field in text_fields else forms.DecimalField(required=False,min_value=None if field in ('profit','profit_per_km','margin') else 0,max_digits=14,decimal_places=2))
+    form.fields['revision']=forms.CharField(required=False)
+    if not form.is_valid(): return JsonResponse({'error':'Перевірте введене значення.'},status=400)
+    with transaction.atomic():
+        trip=get_object_or_404(Trip.objects.select_for_update(),pk=pk,status='completed')
+        record=TripEconomics.objects.select_for_update().filter(trip=trip).first()
+        if form.cleaned_data['revision'] != (record.updated_at.isoformat() if record else ''):
+            return JsonResponse({'error':'Рейс уже змінено. Оновіть сторінку.'},status=409)
+        if record is None: record=snapshot_completion_rates(trip)
+        overrides=dict(record.report_overrides or {})
+        manual=dict(overrides.get('manual_v2') or {})
+        before=manual.get(field)
+        value=form.cleaned_data['value']
+        if value is None: manual.pop(field,None)
+        else: manual[field]=str(value)
+        if manual: overrides['manual_v2']=manual
+        else: overrides.pop('manual_v2',None)
+        record.report_overrides=overrides
+        record.save(update_fields=['report_overrides','updated_at'])
+        from .views import event
+        event(request.user,'Виправлено формулу у звіті',trip,f'{field}: {before or "автоматично"} → {value if value is not None else "автоматично"}')
+        return JsonResponse({'revision':record.updated_at.isoformat()})
+
 def economics_initial(trip, existing, defaults=None):
     initial={'revision':existing.updated_at.isoformat() if existing else ''}
     if existing is None:
@@ -344,6 +509,8 @@ def preview_economics(request,pk):
     if not form.is_valid():
         return JsonResponse({'error':'Перевірте введені числа; попередній розрахунок недоступний.'},status=400)
     inputs=TripEconomics(trip=trip,**{name:form.cleaned_data[name] for name in EconomicsForm.Meta.fields})
+    saved=TripEconomics.objects.filter(trip=trip).first()
+    if saved: inputs.report_overrides=saved.report_overrides
     values=finances(trip,inputs)
     return JsonResponse({'values':{key:str(floatformat(values[key],2)) if values.get(key) is not None else '—' for key in RESULT_FIELDS}})
 

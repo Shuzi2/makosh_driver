@@ -30,6 +30,8 @@ path('report/drivers/archive/<str:label>/excel/',driver_report_export.export_dri
 path('report/drivers/<int:pk>/',driver_reports.detail,name='driver_report_detail'),
 path('report/drivers/archive/<str:label>/',driver_reports.unmatched_detail,name='driver_report_unmatched'),
 path('report/archive/<int:pk>/prices/',driver_reports.edit_archive_prices,name='driver_archive_prices'),
+path('report/archive/<int:pk>/cell/',driver_reports.edit_archive_cell,name='driver_report_archive_cell'),
+path('report/economics/<int:pk>/fuel-rate/',driver_reports.edit_fuel_rate,name='driver_report_fuel_rate'),
 path('report/economics/<int:pk>/preview/',driver_reports.preview_economics,name='driver_economics_preview'),
 path('report/economics/<int:pk>/',driver_reports.edit_economics,name='driver_economics_edit'),
 path('waybills/',waybills.waybill_list,name='waybill_list'),

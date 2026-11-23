@@ -53,3 +53,22 @@
 .period-summary-groups{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px;margin-top:18px}.period-summary-group{min-width:0;border:1px solid #e3e8ec;border-radius:12px;padding:14px;background:#fafbfc}.period-summary-group h3{margin:0 0 12px;font-size:15px}.period-summary-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}.period-summary-metric{padding:11px 12px;border:1px solid #e9edf0;border-radius:9px;background:#fff;min-width:0}.period-summary-metric small,.period-summary-metric strong,.period-summary-metric span{display:block}.period-summary-metric small{color:#60717e;font-size:11px}.period-summary-metric strong{font-size:17px;color:#263842;margin:5px 0;font-variant-numeric:tabular-nums;overflow-wrap:anywhere}.period-summary-metric em{font-size:11px;font-style:normal;color:#687b86}.period-summary-metric span,.period-summary-note{font-size:10px;color:#788891;line-height:1.5}.period-summary-note{margin:14px 0 0}@media(max-width:900px){.period-summary-groups{grid-template-columns:1fr}}@media(max-width:430px){.period-summary{padding:16px}.period-summary-grid{grid-template-columns:1fr 1fr}.period-summary-metric{padding:9px}.period-summary-metric strong{font-size:15px}}
 
 .sheet-selection{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin:12px 0;padding:11px 14px;background:#f0f6f3;border:1px solid #d5e6dc;border-radius:10px;color:#284e3c}.sheet-selection [data-selection-status]{font-size:13px;font-weight:700}.sheet-selection small{font-size:11px;color:#657b70}.sheet-selection .btn{min-height:32px;padding:5px 9px;font-size:11px}.driver-sheet td.sheet-selected{box-shadow:inset 0 0 0 2px #ed6a2c!important;background:#fff0e4!important;position:relative}.driver-sheet td.sheet-selected .sheet-cell-button{background:transparent}.driver-sheet td.sheet-selected input{user-select:text}
+.driver-sheet td[data-formula="1"]{background:#f3f9f5;color:#285b42}.driver-sheet td.sheet-result-editable[data-value]:not([data-value=""])::after,.driver-sheet td[data-corrected="1"]::after{content:"";position:absolute;right:5px;top:5px;width:6px;height:6px;border-radius:50%;background:#e95519;pointer-events:none}.driver-sheet td[data-corrected="1"]{position:relative}.driver-sheet td[data-result].is-positive{color:#18714b;font-weight:700}.driver-sheet td[data-result].is-negative{color:#b13030;font-weight:700}.driver-sheet td[data-result].is-empty{color:#8a98a1;font-weight:400}
+/* Archive details are available on demand without hiding current fleet data. */
+.period-summary-groups{grid-template-columns:minmax(0,1fr)}
+.period-summary-grid{grid-template-columns:repeat(4,minmax(0,1fr))}
+.insight-columns{display:flex;flex-direction:column}
+.insight-live{order:0}.insight-columns>.archive-disclosure{order:1}
+.insight-grid{grid-template-columns:repeat(4,minmax(0,1fr))}
+.archive-disclosure{padding:0;overflow:hidden}
+.archive-disclosure>summary{display:flex;align-items:center;justify-content:space-between;gap:12px;list-style:none;cursor:pointer;padding:14px 16px;color:#263842;font-size:14px;font-weight:700}
+.archive-disclosure>summary::-webkit-details-marker{display:none}
+.archive-disclosure>summary:hover{background:#f2f5f6}
+.archive-disclosure>summary:focus-visible{outline:3px solid #f59b71;outline-offset:-3px;border-radius:10px}
+.archive-disclosure summary small{display:inline-block;margin-left:8px;font-size:11px;font-weight:600;color:#647480;background:#eff3f5;padding:6px 10px;border-radius:20px}
+.archive-disclosure-toggle{font-size:12px;font-weight:600;color:#a64a20;white-space:nowrap}
+.archive-disclosure-toggle::after{content:'Розгорнути ↓'}
+.archive-disclosure[open] .archive-disclosure-toggle::after{content:'Згорнути ↑'}
+.archive-disclosure[open]>.period-summary-grid,.archive-disclosure[open]>.insight-grid{margin:0 14px 14px}
+@media(max-width:1000px){.period-summary-grid,.insight-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:430px){.archive-disclosure>summary{padding:13px 12px}.archive-disclosure summary small{margin-left:4px;padding:5px 7px}.archive-disclosure-toggle{font-size:11px}}

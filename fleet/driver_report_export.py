@@ -10,7 +10,7 @@ from django.contrib.auth.decorators import login_required
 from django.views.decorators.http import require_GET
 from django.utils import timezone
 from .models import User, DriverReportHistory
-from .driver_reports import guard, report_context, PeriodForm, RESULT_FIELDS
+from .driver_reports import guard, report_context, PeriodForm, RESULT_FIELDS, archive_effective
 from .management.commands.import_driver_reports import KEYS, number
 
 HEADERS=['№ / рейс','Дата','Кілометраж, км','Ставка водія, грн/день','Кількість днів','Бонус водія, грн/км','Ціна AdBlue, грн/л','Ціна пального, грн/л','Витрата пального, л/100 км','Витрата AdBlue, л/100 км','Амортизація, грн/км','Кредит, грн/км','Ціна рейсу, грн','Додаткові витрати, грн','Переїзд','Точка завантаження','Точка розвантаження','Маршрут','Витрати на пальне, грн','Витрати на AdBlue, грн','Амортизація і кредит, грн','Оплата водія, грн','Загальні витрати, грн','Прибуток, грн','Собівартість, грн/км','Прибуток, грн/км','Маржа, %','Пальне, л · AB','Примітки']
@@ -21,17 +21,16 @@ def numeric(value):
     return result if result is not None and result.is_finite() else value
 
 def archive_row(row):
-    raw=row.source_values | row.report_corrections
+    raw=archive_effective(row)
     values=[]
     for key in KEYS:
         display=row.display.get(key)
         value=display if key in TEXT_KEYS else raw.get(key)
-        if row.prices_corrected and key in {v[0] for v in RESULT_FIELDS.values()}: value=None
         if key not in TEXT_KEYS and value not in (None,''):
             value=numeric(value)
         values.append(value)
     notes=list(row.anomalies)
-    if row.prices_corrected: notes.append('Дані виправлено; історичні підсумки не перераховано')
+    if row.report_corrections: notes.append('Дані виправлено у звіті; початкові значення збережено')
     return [row.source_number,*values,numeric(row.extra_ab) if row.extra_ab not in (None,'') else None,'; '.join(notes)]
 
 def live_row(trip):
@@ -43,9 +42,10 @@ def live_row(trip):
     note=[]
     if trip.report_economics is None: note.append('Попередні значення з поточних налаштувань, ставки не збережені')
     if metrics['foreign']: note.append('Є витрати в іноземній валюті: загальна сума не розрахована')
-    date=timezone.localtime(trip.completed_at).strftime('%d.%m.%Y') if trip.completed_at else ''
-    values=[date,trip.distance_km,field('daily_rate'),field('days'),field('bonus_per_km'),field('adblue_price'),field('fuel_price'),metrics.get('fuel_rate'),field('adblue_rate'),field('depreciation_per_km'),field('credit_per_km'),field('price'),field('extra_cost'),f'{trip.acceptance_location} → {trip.origin}' if trip.acceptance_location else '',trip.origin,trip.destination,f'{trip.origin} → {trip.destination}',*[metrics.get(k) for k in ('fuel','adblue','depreciation','wage','total','profit','cost_per_km','profit_per_km','margin')]]
-    return [f'№{trip.pk}',*values,trip.fuel_used_l,'; '.join(note)]
+    date=trip.report_fields['date']
+    values=[date,trip.report_kilometers,field('daily_rate'),field('days'),field('bonus_per_km'),field('adblue_price'),field('fuel_price'),metrics.get('fuel_rate'),field('adblue_rate'),field('depreciation_per_km'),field('credit_per_km'),field('price'),field('extra_cost'),trip.report_fields['empty_route'],trip.report_fields['loading'],trip.report_fields['unloading'],trip.report_fields['route'],*[metrics.get(k) for k in ('fuel','adblue','depreciation','wage','total','profit','cost_per_km','profit_per_km','margin')]]
+    if trip.report_fuel_manual != '': note.append('Витрата пального виправлена лише у звіті')
+    return [trip.report_fields['report_number'],*values,metrics.get('report_fuel_litres',trip.fuel_used_l),'; '.join(note)]
 
 def col(index):
     result=''
