@@ -622,6 +622,7 @@ class PushDelivery(models.Model):
     recipient=models.ForeignKey(settings.AUTH_USER_MODEL,on_delete=models.CASCADE,related_name='+')
     trip=models.ForeignKey(Trip,null=True,blank=True,on_delete=models.CASCADE,related_name='+')
     kind=models.CharField(max_length=20)
+    message=models.CharField(max_length=500,blank=True)
     status=models.CharField(max_length=12,default='pending',db_index=True)
     attempts=models.PositiveSmallIntegerField(default=0)
     created_at=models.DateTimeField(default=timezone.now)
@@ -629,6 +630,18 @@ class PushDelivery(models.Model):
     claimed_at=models.DateTimeField(null=True,blank=True)
     class Meta:
         ordering=['created_at','pk']
+
+
+class StaffTripNotification(models.Model):
+    recipient=models.ForeignKey(settings.AUTH_USER_MODEL,on_delete=models.CASCADE,related_name='staff_trip_notifications')
+    trip=models.ForeignKey(Trip,on_delete=models.CASCADE,related_name='staff_notifications')
+    driver=models.ForeignKey(settings.AUTH_USER_MODEL,on_delete=models.PROTECT,related_name='+')
+    kind=models.CharField(max_length=24)
+    location=models.CharField(max_length=250,blank=True)
+    created_at=models.DateTimeField(default=timezone.now)
+    read_at=models.DateTimeField(null=True,blank=True)
+    class Meta:
+        ordering=['-created_at','-pk']
 
 
 class TtnNotification(models.Model):

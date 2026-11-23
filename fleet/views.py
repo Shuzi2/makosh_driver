@@ -99,6 +99,8 @@ def trip_accept(request,pk):
             from .driver_notifications import resolve_assignment
             resolve_assignment(trip)
             event(request.user,'Водій прийняв рейс',trip,f'Місце водія під час прийняття: {location}. Спідометр: {odometer} км.')
+            from .staff_trip_notifications import notify_staff
+            notify_staff(trip,request.user,'accepted')
             messages.success(request,'Рейс прийнято. Логіст бачить ваше підтвердження.')
     return redirect('trip_detail',pk=pk)
 
@@ -533,6 +535,11 @@ def trip_status(request,pk):
             transaction.on_commit(lambda vehicle_id=trip.vehicle_id, driver_id=trip.driver_id: promote_after_completion(vehicle_id,driver_id),robust=True)
         if previous_tons!=trip.actual_tons: event(request.user,'Оновлено фактичну вагу',trip,f'{previous_tons if previous_tons is not None else "не вказано"} → {trip.actual_tons} т')
         event(request.user,"Змінено статус",trip,f"{dict(Trip.Status.choices)[previous]} → {trip.get_status_display()}")
+        if request.user.role=='driver' and target!=previous:
+            from .staff_trip_notifications import notify_staff
+            transitions={'loading':('arrived_load',trip.origin),'road':('departed_load',trip.origin),'unloading':('arrived_unload',trip.destination),'completed':('departed_unload',trip.destination)}
+            if target in transitions:
+                kind,location=transitions[target];notify_staff(trip,request.user,kind,location)
         if target=='cancelled': event(request.user,'Скасовано рейс — очікуємо ознайомлення',trip,trip.cancellation_reason or 'Без пояснення для водія. Очікуємо підтвердження ознайомлення.')
     messages.success(request,'Рейс скасовано. Очікуємо підтвердження ознайомлення водія.' if target=='cancelled' else 'Статус оновлено. Документи можна додати після завершення рейсу.')
     return trip_response(request,pk)

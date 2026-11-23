@@ -3,7 +3,8 @@ from django.db.models import F
 from django.urls import reverse
 from django.utils import timezone
 from django.views.decorators.http import require_GET, require_POST
-from .models import TtnNotification, DelayNotification
+from .models import TtnNotification, DelayNotification, StaffTripNotification
+from .staff_trip_notifications import LABELS
 from .views import staff_required
 
 
@@ -27,9 +28,13 @@ def inbox(request):
                       'time':timezone.localtime(delay.created_at).strftime('%d.%m.%Y %H:%M'),
                       'read':notice.read_at is not None,'sort_time':delay.created_at.isoformat(),
                       'url':reverse('trip_detail',args=[delay.trip_id])+'#trip-history'})
+    events=StaffTripNotification.objects.filter(recipient=request.user).select_related('trip__vehicle','driver')
+    for notice in events.order_by(F('read_at').asc(nulls_first=True),'-created_at','-pk')[:40]:
+        label=LABELS.get(notice.kind,'Подія рейсу')
+        items.append({'id':f'trip_event:{notice.pk}','kind':label+(f' · {notice.location}' if notice.location else ''),'driver':notice.driver.full_name,'trip':notice.trip_id,'vehicle':notice.trip.vehicle.plate,'time':timezone.localtime(notice.created_at).strftime('%d.%m.%Y %H:%M'),'read':notice.read_at is not None,'sort_time':notice.created_at.isoformat(),'url':reverse('trip_detail',args=[notice.trip_id])+'#trip-history'})
     items.sort(key=lambda item:item['sort_time'],reverse=True)
     items.sort(key=lambda item:item['read'])
-    response=JsonResponse({'items':items[:40],'unread':records.filter(read_at__isnull=True).count()+delays.filter(read_at__isnull=True).count()})
+    response=JsonResponse({'items':items[:40],'unread':records.filter(read_at__isnull=True).count()+delays.filter(read_at__isnull=True).count()+events.filter(read_at__isnull=True).count()})
     response['Cache-Control']='private, no-store'
     return response
 
@@ -39,6 +44,9 @@ def inbox(request):
 def mark_read(request):
     notice_id=request.POST.get('id','')
     model=TtnNotification
+    if notice_id.startswith('trip_event:'):
+        model=StaffTripNotification
+        notice_id=notice_id[11:]
     if notice_id.startswith('delay:'):
         model=DelayNotification
         notice_id=notice_id[6:]

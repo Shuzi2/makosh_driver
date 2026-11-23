@@ -62,7 +62,7 @@ class PhoneLoginView(LoginView):
                 b.failures+=1; b.save(); buckets.append(b)
         response=super().post(request,*args,**kwargs)
         if request.user.is_authenticated:
-            if request.user.role == 'driver':
+            if request.user.role in ('driver','moderator','admin'):
                 from django.conf import settings
                 request.session.set_expiry(settings.DRIVER_SESSION_AGE)
                 request.session['driver_session_renewed_at'] = int(now.timestamp())

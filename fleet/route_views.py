@@ -32,6 +32,9 @@ def stop_action(request,pk):
             stop.state='arrived';stop.arrived_at=timezone.now();stop.save(update_fields=['state','arrived_at'])
             trip.status='loading' if stop.kind=='load' else 'unloading'
             audit(request.user,trip,'Прибув до точки маршруту',f'Точка {stop.position}: {stop.get_kind_display()}, {stop.address}')
+            if request.user.role=='driver':
+                from .staff_trip_notifications import notify_staff
+                notify_staff(trip,request.user,'arrived_load' if stop.kind=='load' else 'arrived_unload',stop.address)
         elif mode=='depart' and stop.state=='arrived':
             final=not trip.stops.filter(state__in=['pending','arrived']).exclude(pk=stop.pk).exists()
             finish_form=None
@@ -70,6 +73,9 @@ def stop_action(request,pk):
             stop.state='completed';stop.completed_at=timezone.now();stop.completed_by=request.user;stop.save(update_fields=['actual_tons','weight_revision','state','completed_at','completed_by'])
             if before!=tons: audit(request.user,trip,'Фактична вага точки',f'Точка {stop.position}, {stop.address}: {before if before is not None else "—"} → {tons} т')
             audit(request.user,trip,'Виконано точку маршруту',f'Точка {stop.position}: {stop.get_kind_display()}, {stop.address}')
+            if request.user.role=='driver':
+                from .staff_trip_notifications import notify_staff
+                notify_staff(trip,request.user,'departed_load' if stop.kind=='load' else 'departed_unload',stop.address)
             remaining=trip.stops.filter(state__in=['pending','arrived']).exists()
             trip.status='road' if remaining else 'completed'
             if not remaining: trip.completed_at=timezone.now()

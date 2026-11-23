@@ -52,6 +52,21 @@ class RouteTests(TestCase):
         self.assertEqual(trip.actual_tons,Decimal('23.75'))
         self.assertEqual((trip.empty_distance_km,trip.loaded_distance_km,trip.distance_km),(70,350,420))
 
+    def test_staff_gets_driver_acceptance_and_unloading_updates_once(self):
+        trip=self.create();self.accept(trip);self.accept(trip)
+        self.client.force_login(self.admin)
+        items=self.client.get(reverse('ttn_notifications')).json()['items']
+        self.assertEqual(sum(i['kind']=='Водій прийняв рейс' for i in items),1)
+        self.assertEqual(next(i for i in items if i['kind']=='Водій прийняв рейс')['driver'],self.driver.full_name)
+        self.client.force_login(self.driver)
+        self.act(trip,'arrive');self.act(trip,'depart');self.act(trip,'arrive');self.act(trip,'depart')
+        self.act(trip,'arrive');trip.refresh_from_db();self.upload(trip,trip.current_stop)
+        self.act(trip,'depart')
+        self.client.force_login(self.admin)
+        items=self.client.get(reverse('ttn_notifications')).json()['items']
+        self.assertTrue(any('Прибув на розвантаження' in i['kind'] and i['driver']==self.driver.full_name for i in items))
+        self.assertTrue(any('Завершив розвантаження' in i['kind'] and i['driver']==self.driver.full_name for i in items))
+
     def test_route_completion_promotes_next_trip_immediately(self):
         trip=self.final_trip()
         future=Trip.objects.create(vehicle=self.vehicle,driver=self.driver,created_by=self.admin,status='queued',origin='А',destination='Б',cargo='Вантаж',planned_tons=1,planned_date=timezone.localdate())
@@ -915,16 +930,18 @@ class RouteTests(TestCase):
         self.assertEqual(self.client.get('/notifications/ttn/').status_code,403)
         self.client.force_login(self.admin)
         data=self.client.get('/notifications/ttn/').json()
-        self.assertEqual(data['unread'],1)
+        self.assertEqual(data['unread'],2)
         self.assertEqual(data['items'][0]['kind'],'ТТН із завантаження')
         self.assertEqual(self.client.post('/notifications/ttn/read/',{'id':data['items'][0]['id']}).status_code,200)
-        self.assertEqual(self.client.get('/notifications/ttn/').json()['unread'],0)
+        remaining=self.client.get('/notifications/ttn/').json()
+        self.assertEqual(remaining['unread'],1)
+        self.assertTrue(any(i['kind']=='Водій прийняв рейс' and not i['read'] for i in remaining['items']))
         other_notice=TtnNotification.objects.get(recipient=second)
         self.client.post('/notifications/ttn/read/',{'id':other_notice.pk})
         other_notice.refresh_from_db()
         self.assertIsNone(other_notice.read_at)
         self.client.force_login(second)
-        self.assertEqual(self.client.get('/notifications/ttn/').json()['unread'],1)
+        self.assertEqual(self.client.get('/notifications/ttn/').json()['unread'],2)
 
     def test_driver_other_documents_do_not_create_ttn_notifications(self):
         from fleet.models import TtnNotification
@@ -963,7 +980,9 @@ class RouteTests(TestCase):
         notice=self.client.get('/notifications/ttn/').json()['items'][0]
         self.assertIn('Затримка',notice['kind'])
         self.assertEqual(self.client.post('/notifications/ttn/read/',{'id':notice['id']}).status_code,200)
-        self.assertEqual(self.client.get('/notifications/ttn/').json()['unread'],0)
+        remaining=self.client.get('/notifications/ttn/').json()
+        self.assertEqual(remaining['unread'],1)
+        self.assertTrue(any(i['kind']=='Водій прийняв рейс' and not i['read'] for i in remaining['items']))
         self.assertContains(self.client.get(f'/trips/{trip.pk}/'), 'Черга на складі')
         self.assertContains(self.client.get(f'/trips/{trip.pk}/'), 'Повідомлення водія')
         live=self.client.get(f'/trips/{trip.pk}/?live=1').json()

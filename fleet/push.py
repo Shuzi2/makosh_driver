@@ -106,7 +106,7 @@ def enqueue(user_id,kind,trip=None):
     subscriptions=PushSubscription.objects.filter(user_id=user_id,user__is_active=True,user__role='driver')
     PushDelivery.objects.bulk_create([PushDelivery(subscription=sub,recipient_id=user_id,kind=kind,trip=trip) for sub in subscriptions])
 
-STAFF_KINDS={'staff_ttn','staff_delay','staff_service'}
+STAFF_KINDS={'staff_ttn','staff_delay','staff_service','staff_trip_event'}
 
 def staff_can_receive(user,kind):
     if not user.is_active: return False
@@ -118,10 +118,10 @@ def staff_can_receive(user,kind):
     if kind == 'staff_service': return permissions.view_fleet
     return permissions.view_documents and permissions.view_trips
 
-def enqueue_staff(kind,trip=None):
+def enqueue_staff(kind,trip=None,message=''):
     if not configured() or kind not in STAFF_KINDS: return
     subscriptions=PushSubscription.objects.filter(user__is_active=True,user__role__in=['admin','moderator']).select_related('user')
-    PushDelivery.objects.bulk_create([PushDelivery(subscription=sub,recipient=sub.user,kind=kind,trip=trip) for sub in subscriptions if staff_can_receive(sub.user,kind)])
+    PushDelivery.objects.bulk_create([PushDelivery(subscription=sub,recipient=sub.user,kind=kind,trip=trip,message=message[:500]) for sub in subscriptions if staff_can_receive(sub.user,kind)])
 
 def queue_trip_change(trip):
     if trip.status in trip.ACTIVE+['queued']:
@@ -153,12 +153,14 @@ def process_deliveries(limit=30):
                 'service':('Оновлення сервісу','Логіст оновив ваше звернення. Відкрийте сервіс, щоб переглянути.'),
                 'staff_ttn':('Нова ТТН','Водій надіслав документ. Перегляньте рейс.'),
                 'staff_delay':('Затримка рейсу','Водій повідомив про затримку. Перегляньте рейс.'),
-                'staff_service':('Повідомлення від водія','Нове або оновлене звернення щодо сервісу.')}
+                'staff_service':('Повідомлення від водія','Нове або оновлене звернення щодо сервісу.'),
+                'staff_trip_event':('Подія рейсу','Водій оновив етап рейсу.')}
         title,body=labels.get(job.kind,('Повідомлення','Відкрийте кабінет водія.'))
+        if job.kind=='staff_trip_event' and job.message: body=job.message
         if job.kind == 'assignment' and job.trip_id:
             title=f'Новий рейс №{job.trip_id}'
         if job.kind=='staff_service': target=reverse('manager_messages')
-        elif job.kind in ('staff_ttn','staff_delay') and job.trip_id: target=reverse('trip_detail',args=[job.trip_id])+('#documents' if job.kind=='staff_ttn' else '#trip-history')
+        elif job.kind in ('staff_ttn','staff_delay','staff_trip_event') and job.trip_id: target=reverse('trip_detail',args=[job.trip_id])+('#documents' if job.kind=='staff_ttn' else '#trip-history')
         else: target=reverse('driver_service') if job.kind=='service' else reverse('driver_trips')+(f'#trip-{job.trip_id}' if job.trip_id else '')
         try:
             webpush(subscription_info={'endpoint':sub.endpoint,'keys':{'p256dh':sub.p256dh,'auth':sub.auth}},

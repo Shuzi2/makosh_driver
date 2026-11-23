@@ -31,7 +31,7 @@ class SessionActivityMiddleware:
     def __init__(self, get_response): self.get_response = get_response
     def __call__(self, request):
         if request.user.is_authenticated:
-            if request.user.role == 'driver':
+            if request.user.role in ('driver','moderator','admin'):
                 from django.utils import timezone
                 now = int(timezone.now().timestamp())
                 renewed = request.session.get('driver_session_renewed_at', 0)

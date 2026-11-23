@@ -114,6 +114,21 @@ class DriverPushTests(TestCase):
         queue_service_reply(self.driver.pk)
         self.assertEqual(PushDelivery.objects.count(),2)
 
+    def test_staff_trip_event_push_contains_driver_trip_and_location(self):
+        from fleet.models import PushDelivery
+        from fleet.push import process_deliveries
+        from fleet.staff_trip_notifications import notify_staff
+        self.client.force_login(self.staff);self.subscribe()
+        notify_staff(self.trip,self.driver,'arrived_unload','м. Вінниця')
+        delivery=PushDelivery.objects.get(kind='staff_trip_event')
+        self.assertEqual(delivery.recipient,self.staff)
+        with patch('fleet.push.webpush') as sender: process_deliveries()
+        payload=json.loads(sender.call_args.kwargs['data'])
+        self.assertIn(self.driver.full_name,payload['body'])
+        self.assertIn(str(self.trip.pk),payload['body'])
+        self.assertIn('м. Вінниця',payload['body'])
+        self.assertIn(reverse('trip_detail',args=[self.trip.pk]),payload['url'])
+
     def test_subscription_cannot_be_removed_by_another_driver(self):
         self.subscribe()
         self.client.force_login(self.other)
