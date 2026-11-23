@@ -8,10 +8,12 @@
     canvas.replaceChildren();canvas.classList.remove('is-zoomed');find('zoom').textContent='Збільшити ＋';
     find('title').textContent=item.title;find('subtitle').textContent=[item.place,item.number?'ТТН '+item.number:'',item.name].filter(Boolean).join(' · ');
     find('counter').textContent=(index+1)+' / '+documents.length;find('prev').disabled=index===0;find('next').disabled=index===documents.length-1;
-    find('download').href=item.download;find('zoom').hidden=item.type==='application/pdf';message.textContent='';
+    find('download').href=item.download;find('zoom').hidden=item.type==='application/pdf'||item.type==='application/octet-stream';message.textContent='';
     if(item.type==='application/pdf'){
       const frame=document.createElement('iframe');frame.src=item.url;frame.title=item.title;frame.className='document-pdf';canvas.append(frame);
       const fallback=document.createElement('a');fallback.href=item.url;fallback.target='_blank';fallback.rel='noopener';fallback.textContent='Відкрити PDF окремо ↗';canvas.append(fallback);
+    }else if(item.type==='application/octet-stream'){
+      message.textContent='Файл збережено; попередній перегляд недоступний. Завантажте його для відкриття.';
     }else{
       const img=document.createElement('img');img.src=item.url;img.alt=item.title;img.addEventListener('error',()=>{if(canvas.contains(img))message.textContent='Не вдалося відкрити фото. Перевірте інтернет або завантажте оригінал.';});canvas.append(img);
     }
@@ -29,7 +31,7 @@
       documents=data.documents;index=Math.max(0,documents.findIndex(item=>item.id===data.selected));find('trip').textContent='Рейс №'+data.trip;
       documents.forEach((item,i)=>{
         const button=document.createElement('button');button.type='button';button.title=item.title+' · '+item.place;
-        if(item.type==='application/pdf'){const label=document.createElement('span');label.textContent='PDF';button.append(label);}
+        if(item.type==='application/pdf'||item.type==='application/octet-stream'){const label=document.createElement('span');label.textContent=item.type==='application/pdf'?'PDF':'ФАЙЛ';button.append(label);}
         else{const img=document.createElement('img');img.src=item.url;img.loading='lazy';img.alt=item.title;button.append(img);}
         const number=document.createElement('small');number.textContent=String(i+1);button.append(number);button.addEventListener('click',()=>{index=i;show();});thumbs.append(button);
       });find('zoom').disabled=false;show();

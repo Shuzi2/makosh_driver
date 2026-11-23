@@ -33,7 +33,7 @@
         });
         li.append(label,remove);list.append(li);
       });
-      status.textContent=selected.length?'Обрано файлів: '+selected.length+'. Фото готові до надсилання.':'Зробіть фото або оберіть кілька файлів.';
+      status.textContent=selected.length?'Обрано файлів: '+selected.length+'. Фото готові до надсилання.':'Зробіть фото або оберіть файли.';
       if(selected.length)form.setAttribute('data-driver-dirty','true');else form.removeAttribute('data-driver-dirty');lock();
     }
     function save(){
@@ -85,7 +85,7 @@
       event.preventDefault();if(uploading||conflict)return;uploading=true;lock();
       await ready;await queue;
       if(conflict){uploading=false;lock();return;}
-      if(!selected.length){status.textContent='Спочатку додайте фото або PDF.';uploading=false;lock();return;}
+      if(!selected.length){status.textContent='Спочатку додайте фото або файл.';uploading=false;lock();return;}
       if(!navigator.onLine){status.textContent='Немає інтернету. Фото ще не надіслано. Після відновлення зв’язку натисніть «Надіслати».';uploading=false;lock();return;}
       // Capture before disabling controls; immutable payload allows an exact retry after a lost response.
       if(!frozen){controls.forEach((c,i)=>c.disabled=originallyDisabled(c,i));metadata=readMeta();frozen=true;}

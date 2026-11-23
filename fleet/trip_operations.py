@@ -43,6 +43,7 @@ class ExpenseForm(forms.ModelForm):
         if receipt:
             validator=DocumentForm({'kind':'other'},{'file':receipt})
             if not validator.is_valid(): raise forms.ValidationError(validator.errors.get('file',['Не вдалося перевірити файл.']))
+            if validator.detected_type=='application/octet-stream': raise forms.ValidationError('Не вдалося перевірити фото або PDF чека.')
             receipt.seek(0)
         return receipt
     def clean(self):

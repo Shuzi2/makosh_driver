@@ -1225,7 +1225,7 @@ class FleetTests(TestCase):
         self.assertEqual(Document.objects.count(),1)
         self.upload(file=SimpleUploadedFile('evil.png',b'<script>bad()</script>',content_type='image/png'))
         self.upload(file=SimpleUploadedFile('evil.html',b'%PDF-fake',content_type='application/pdf'))
-        self.assertEqual(Document.objects.count(),1)
+        self.assertEqual(Document.objects.filter(content_type='application/octet-stream').count(),2)
     def test_upload_iphone_images_with_unreliable_filename_and_heic(self):
         import pillow_heif
         self.login_as(self.driver);self.accept()
@@ -1247,6 +1247,18 @@ class FleetTests(TestCase):
         doc=Document.objects.get()
         self.assertEqual(doc.content_type,'image/jpeg')
         self.assertTrue(doc.original_name.endswith('.jpg'))
+    def test_unknown_file_is_download_only_and_can_be_removed(self):
+        self.login_as(self.driver);self.accept()
+        payload=b'unknown contents from phone'
+        self.upload(file=SimpleUploadedFile('IMG7596.jpeg',payload,content_type='image/jpeg'))
+        doc=Document.objects.get()
+        self.assertEqual(doc.content_type,'application/octet-stream')
+        self.assertEqual(self.client.get(self.url('document_inline',doc.pk)).status_code,404)
+        response=self.client.get(self.url('document_download',doc.pk))
+        self.assertIn('attachment',response['Content-Disposition'])
+        self.assertEqual(b''.join(response.streaming_content),payload)
+        self.assertContains(self.client.get(self.url('document_preview',doc.pk)),'попередній перегляд недоступний')
+        self.assertEqual(self.client.post(self.url('driver_remove_photo',doc.pk)).status_code,302)
     def test_iphone_photo_retry_does_not_create_duplicate(self):
         import pillow_heif
         self.login_as(self.driver);self.accept()

@@ -251,8 +251,7 @@ class DocumentForm(forms.ModelForm):
     class Meta:
         model=Document
         fields=["stop","kind","ttn_number","file"]
-        labels={"file":"Фото або PDF (до 20 МБ)"}
-        widgets={"file":forms.ClearableFileInput(attrs={"accept":"image/*,.heic,.heif,application/pdf"})}
+        labels={"file":"Файл (до 20 МБ)"}
     def __init__(self,*args,**kwargs):
         trip=kwargs.pop('trip',None)
         super().__init__(*args,**kwargs)
@@ -313,8 +312,11 @@ class DocumentForm(forms.ModelForm):
                             raise ValidationError('Фото після обробки завелике. Оберіть менше фото.')
                         f=SimpleUploadedFile((Path(f.name).stem or 'photo')+'.jpg',output.getvalue(),content_type='image/jpeg')
                         self.detected_type='image/jpeg'
-            except (UnidentifiedImageError, OSError, ValueError, Image.DecompressionBombError, Image.DecompressionBombWarning):
-                raise ValidationError("Не вдалося прочитати фото. Оберіть інше фото або PDF і спробуйте ще раз.")
+            except (Image.DecompressionBombError, Image.DecompressionBombWarning):
+                raise ValidationError("Розміри зображення завеликі для безпечної обробки.")
+            except (UnidentifiedImageError, OSError, ValueError):
+                # Unknown content is stored as a private download, never rendered inline.
+                self.detected_type='application/octet-stream'
         f.seek(0)
         return f
 

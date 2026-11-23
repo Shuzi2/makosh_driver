@@ -13,10 +13,10 @@ from .models import AuditEvent, Document, Trip, TripStop
 @require_POST
 def remove_driver_photo(request,pk):
     if request.user.role != 'driver': raise PermissionDenied
-    initial=get_object_or_404(Document.objects.select_related('trip'),pk=pk,uploaded_by=request.user,trip__driver=request.user,content_type__in=['image/jpeg','image/png','image/webp','application/pdf'])
+    initial=get_object_or_404(Document.objects.select_related('trip'),pk=pk,uploaded_by=request.user,trip__driver=request.user,content_type__in=['image/jpeg','image/png','image/webp','application/pdf','application/octet-stream'])
     with transaction.atomic():
         trip=get_object_or_404(Trip.objects.select_for_update(),pk=initial.trip_id,driver=request.user)
-        doc=get_object_or_404(Document.objects.select_for_update(),pk=pk,trip=trip,uploaded_by=request.user,content_type__in=['image/jpeg','image/png','image/webp','application/pdf'])
+        doc=get_object_or_404(Document.objects.select_for_update(),pk=pk,trip=trip,uploaded_by=request.user,content_type__in=['image/jpeg','image/png','image/webp','application/pdf','application/octet-stream'])
         doc.deleted_at=timezone.now();doc.deleted_by=request.user;doc.save(update_fields=['deleted_at','deleted_by'])
         if doc.stop_id:
             stop=TripStop.objects.select_for_update().get(pk=doc.stop_id,trip=trip)

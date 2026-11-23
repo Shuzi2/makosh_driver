@@ -19,7 +19,7 @@ def upload_documents(request,pk):
     wants_json=request.headers.get('Accept')=='application/json'
     files=request.FILES.getlist('file')
     errors=[]
-    if not 1<=len(files)<=10: errors.append('Оберіть від 1 до 10 фото або PDF.')
+    if not 1<=len(files)<=10: errors.append('Оберіть від 1 до 10 файлів.')
     if sum(file.size for file in files)>40*1024*1024: errors.append('Разом файли мають займати не більше 40 МБ.')
     forms=[]
     if not errors:
@@ -88,6 +88,8 @@ def upload_documents(request,pk):
             if doc.file and doc.file.name and doc.file._committed: doc.file.delete(save=False)
         raise
     messages.success(request,f'Документи збережено: {len(saved)}.')
+    if any(doc.content_type=='application/octet-stream' for doc in saved):
+        messages.warning(request,'Файл збережено, але попередній перегляд недоступний. Завантажте його та перевірте вміст.')
     if wants_json: return JsonResponse(result)
     if request.user.role=='driver' and saved[0].stop_id: return redirect(result['redirect'])
     return trip_response(request,pk,documents=True)
