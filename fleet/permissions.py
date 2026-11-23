@@ -28,6 +28,7 @@ MODERATOR_ROUTES = {
     'saved_place_toggle': ('view_trips', 'edit_trips'),
     'document_download': ('view_documents', 'edit_documents'), 'document_preview': ('view_documents', 'edit_documents'),
     'document_inline': ('view_documents', 'edit_documents'), 'document_upload': ('view_documents', 'edit_documents'),
+    'trip_instruction': ('view_trips', 'edit_trips'),
     'ttn_notifications': ('view_documents', 'view_documents'), 'ttn_notification_read': ('view_documents', 'view_documents'),
     'expense_receipt': ('view_documents', 'view_documents'),
     'original_received': ('view_documents', 'edit_documents'),
@@ -41,6 +42,7 @@ MODERATOR_ROUTES = {
 DRIVER_ROUTE_PERMISSIONS = {
     'dashboard': 'view_trips', 'trip_list': 'view_trips', 'trip_detail': 'view_trips',
     'driver_updates': 'view_trips', 'driver_trips': 'view_trips', 'driver_queue_check': 'change_stages', 'driver_finish': 'view_trips', 'driver_settlement_search': 'change_stages',
+    'trip_instruction': 'view_trips',
     'driver_delay': 'report_delays', 'driver_expense': 'manage_expenses', 'expense_receipt': 'manage_expenses',
     'driver_documents': 'upload_documents', 'document_download': 'upload_documents',
     'driver_service': 'view_trips', 'driver_service_create': 'view_trips', 'driver_service_edit': 'view_trips',

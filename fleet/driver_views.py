@@ -124,7 +124,7 @@ def driver_home(request, selected_trip=None):
     return render(request,'fleet/driver_home.html',{
         **route_data,'driver_update_version':version,'operation_permissions':operation_permissions,
         'pending_cancellations':own.filter(status='cancelled',cancellation_notice_required=True,cancellation_acknowledged_at__isnull=True).select_related('cancelled_by','created_by').order_by('-cancelled_at','-pk'),
-        'trip':trip, 'active_trip':active, 'queued_trips':[item for item in queue if not trip or item.pk != trip.pk],
+        'trip':trip, 'trip_instructions':trip.documents.filter(kind='instruction') if trip else [], 'active_trip':active, 'queued_trips':[item for item in queue if not trip or item.pk != trip.pk],
         'vehicle_current_trip':trip.vehicle.trips.filter(status__in=Trip.ACTIVE).exclude(pk=trip.pk).exists() if trip and trip.status=='queued' else False, 'status_label':label,
         'needs_acceptance':needs_acceptance, 'history_trips':history_trips, 'history_count':history.count(),
         'history_selected':bool(trip and trip.status in ['completed','cancelled']),

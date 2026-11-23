@@ -8,6 +8,7 @@
 <section class="driver-history-selected"><b>Рейс №{{ trip.pk }} · {{ trip.get_status_display }}</b><p>{{ trip.origin }} → {{ trip.destination }}</p><a href="{% url 'driver_documents' %}?trip={{ trip.pk }}">Документи рейсу →</a> {% if trip.status == 'completed' and operation_permissions.manage_expenses %}<a class="driver-back" href="{% url 'driver_expense' trip.pk %}">＋ Додати витрату</a>{% endif %}</section>
 {% elif trip %}
 {% include 'fleet/route_notice.html' %}
+{% if trip_instructions %}<section class="driver-route-notice"><b>Інструкції до рейсу</b><p>Від логіста · відкрийте файл, щоб переглянути.</p>{% for doc in trip_instructions %}<p><a href="{% url 'trip_instruction' doc.pk %}" target="_blank" rel="noopener">📄 {{ doc.original_name }} ↗</a></p>{% endfor %}</section>{% endif %}
 {% if vehicle_current_trip %}<section class="driver-vehicle-wait" role="status"><strong>Авто ще виконує поточний рейс</strong><p>Прийняти завдання можна після завершення попереднього рейсу та отримання авто.</p></section>{% endif %}
 <section class="driver-task state-{{ trip.status }}">
   <div class="driver-status"><span class="driver-status-dot" aria-hidden="true"></span><div class="driver-confirmed-status"><small>{% if user.rest_started_at %}Збережений етап{% else %}Логіст бачить{% endif %}</small><b>{{ status_label }}</b></div><span>Рейс №{{ trip.pk }}</span></div>

@@ -294,7 +294,22 @@ def trip_create(request):
         form_data['planned_tons']=str(sum(d['planned_tons'] for d in stops if d['kind']=='unload'))
         form_data['ttn_number']=''
     form=TripForm(form_data,initial=initial,location_reference=copy_from)
-    if request.method=="POST" and route_valid and form.is_valid():
+    instruction_forms=[];instruction_errors=[]
+    if request.method=='POST':
+        instruction_files=request.FILES.getlist('instructions')
+        if len(instruction_files)>5 or sum(f.size for f in instruction_files)>40*1024*1024:
+            instruction_errors.append('Оберіть до 5 файлів загальним розміром до 40 МБ.')
+        else:
+            for file in instruction_files:
+                instruction=DocumentForm({'kind':'other'},{'file':file})
+                if not instruction.is_valid():
+                    instruction_errors.append(f'{Path(file.name).name}: '+ ' '.join(str(error) for values in instruction.errors.values() for error in values))
+                elif instruction.detected_type not in ('application/pdf','image/jpeg','image/png','image/webp'):
+                    instruction_errors.append(f'{Path(file.name).name}: оберіть PDF або фото.')
+                else: instruction_forms.append(instruction)
+    form_valid=form.is_valid() if request.method=='POST' else False
+    if request.method=="POST" and route_valid and form_valid and not instruction_errors:
+        saved_files=[]
         try:
             with transaction.atomic():
                 vehicle=Vehicle.objects.select_for_update().get(pk=form.cleaned_data["vehicle"].pk)
@@ -310,13 +325,37 @@ def trip_create(request):
                 from .driver_notifications import notify_assignment
                 notify_assignment(trip)
                 if route_mode: route_formset.save_route(trip,request.user)
+                for instruction in instruction_forms:
+                    doc=instruction.save(commit=False);doc.trip=trip;doc.kind=Document.Kind.INSTRUCTION;doc.uploaded_by=request.user
+                    doc.original_name=Path(instruction.cleaned_data['file'].name).name[:250]
+                    doc.content_type=instruction.detected_type;doc.size=instruction.cleaned_data['file'].size
+                    saved_files.append(doc);doc.save()
+                    event(request.user,'Додано інструкцію для водія',trip,doc.original_name)
                 event(request.user,"Додано рейс у чергу" if queue_mode else "Створено рейс",trip,f'{trip.origin} → {trip.destination} · Водій: {driver.full_name} · Тягач: {vehicle.plate} · Причіп: {vehicle.trailer_plate}')
                 if copy_from: event(request.user,'Скопійовано рейс',trip,f'Новий рейс створено на основі рейсу №{copy_from.pk}. Перенесено маршрут, контакти, вантаж, планову вагу та вказівки.')
             messages.success(request,format_html('{} <a href="{}#vehicle-{}">Переглянути авто →</a>','Рейс додано в чергу.' if queue_mode else 'Рейс створено.',reverse('dashboard'),trip.vehicle_id))
             return redirect("trip_detail",pk=trip.pk)
         except (IntegrityError,ValueError) as exc:
+            for doc in saved_files:
+                if doc.file and doc.file._committed: doc.file.delete(save=False)
             form.add_error(None,str(exc) if isinstance(exc,ValueError) else "Авто або водій уже мають активний рейс. Оновіть сторінку.")
-    return render(request,"fleet/trip_create.html",{"form":form,"copy_from":copy_from,"route_formset":route_formset})
+        except Exception:
+            for doc in saved_files:
+                if doc.file and doc.file._committed: doc.file.delete(save=False)
+            raise
+    return render(request,"fleet/trip_create.html",{"form":form,"copy_from":copy_from,"route_formset":route_formset,'instruction_errors':instruction_errors})
+
+@login_required
+@require_GET
+def trip_instruction(request,pk):
+    doc=get_object_or_404(Document.objects.select_related('trip'),pk=pk,kind=Document.Kind.INSTRUCTION,trip__in=trips_for(request.user))
+    if doc.content_type not in ('application/pdf','image/jpeg','image/png','image/webp'): raise Http404
+    try: handle=doc.file.open('rb')
+    except FileNotFoundError: raise Http404('Файл не знайдено.')
+    response=FileResponse(handle,as_attachment=False,filename=doc.original_name,content_type=doc.content_type)
+    response['Cache-Control']='private, no-store';response['X-Content-Type-Options']='nosniff'
+    response['Content-Security-Policy']="default-src 'none'; frame-ancestors 'self'; sandbox"
+    return response
 
 @login_required
 def trip_detail(request,pk):

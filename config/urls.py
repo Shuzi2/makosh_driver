@@ -16,6 +16,7 @@ from fleet import driver_reports, driver_report_export
 from fleet import push
 from fleet import test_trip_delete
 urlpatterns=[
+path('instructions/<int:pk>/',views.trip_instruction,name='trip_instruction'),
 path('accounts/<int:pk>/test-trip-permission/',test_trip_delete.account_test_trip_permission,name='account_test_trip_permission'),
 path('trips/<int:pk>/delete-test/',test_trip_delete.delete_test_trip,name='trip_delete_test'),
 path('service-worker.js',push.service_worker,name='driver_push_worker'),

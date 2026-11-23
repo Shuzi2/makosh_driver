@@ -1,6 +1,6 @@
 {% extends 'fleet/workspace.html' %}{% load static %}{% block extra_css %}<link rel="stylesheet" href="{% static 'routes.css' %}"><link rel="stylesheet" href="{% static 'trip_create.css' %}">{% endblock %}{% block content %}
 <div class="heading create-heading"><div><span class="create-eyebrow">ПЛАНУВАННЯ ПЕРЕВЕЗЕННЯ</span><h1>Новий рейс</h1><p class="muted">Авто, водій і маршрут — усе для наступної поїздки.</p></div><a class="btn" href="{% url 'dashboard' %}">← До автопарку</a></div>
-<form method="post" class="trip-create-form new-trip-workspace" data-trip-create-form>{% csrf_token %}{{ form.non_field_errors }}
+<form method="post" enctype="multipart/form-data" class="trip-create-form new-trip-workspace" data-trip-create-form>{% csrf_token %}{{ form.non_field_errors }}
   {% if copy_from %}<input type="hidden" name="copy_from" value="{{ copy_from.pk }}"><div class="trip-copy-notice"><div><b>Новий рейс на основі №{{ copy_from.pk }}</b><p>Маршрут, контакти, вантаж і вказівки вже заповнені. Оберіть авто, водія та перевірте дату. Номер ТТН, документи й фактичні дані заповнюються заново.</p></div><a href="{% url 'trip_detail' copy_from.pk %}">До вихідного рейсу →</a></div>{% endif %}
   <section class="panel trip-form-section create-assignment"><div class="trip-form-title"><div><span class="trip-section-kicker">01 · Призначення</span><h2>Хто їде й коли</h2></div><span class="create-section-note">Водій побачить рейс після створення</span></div><div class="trip-fields assignment-fields">
     {% include 'fleet/trip_field.html' with field=form.vehicle %}{% include 'fleet/trip_field.html' with field=form.driver %}{% include 'fleet/trip_field.html' with field=form.planned_date %}{% include 'fleet/trip_field.html' with field=form.scheduling %}
@@ -19,5 +19,6 @@
     <div class="trip-field-wide">{% include 'fleet/trip_field.html' with field=form.notes %}</div>
   </div></section>
 {% endif %}
+  <section class="panel trip-form-section"><div class="trip-form-title"><div><span class="trip-section-kicker">ІНСТРУКЦІЯ</span><h2>Файли для водія</h2><p>Наприклад, схема заїзду в порт або на склад.</p></div><span class="create-section-note">Необов’язково</span></div><label for="trip-instructions">PDF або фото</label><input id="trip-instructions" name="instructions" type="file" accept="application/pdf,image/*" multiple><p class="hint">До 5 файлів, кожен до 20 МБ, разом до 40 МБ. Водій побачить їх у рейсі.</p>{% for error in instruction_errors %}<p class="error" role="alert">{{ error }}</p>{% endfor %}{% if instruction_errors %}<p class="hint">Після виправлення виберіть файли повторно.</p>{% endif %}</section>
   <div class="trip-form-footer create-save-bar"><p><b>Готово до відправлення?</b><span>Перевірте порядок точок, вагу й контакти.</span></p><div><a class="btn" href="{% url 'dashboard' %}">Скасувати</a><button class="btn primary" type="submit">Створити рейс</button></div></div>
 </form>{% include 'fleet/location_picker.html' %}{% endblock %}

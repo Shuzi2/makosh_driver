@@ -255,6 +255,7 @@ class DocumentForm(forms.ModelForm):
     def __init__(self,*args,**kwargs):
         trip=kwargs.pop('trip',None)
         super().__init__(*args,**kwargs)
+        self.fields['kind'].choices=[(value,label) for value,label in self.fields['kind'].choices if value!='instruction']
         self.trip=trip
         if trip and trip.route_enabled:
             self.fields['stop'].queryset=trip.stops.exclude(state='cancelled')

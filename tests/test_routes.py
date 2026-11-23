@@ -145,6 +145,36 @@ class RouteTests(TestCase):
         response=self.client.post('/trips/new/',self.data(points))
         self.assertEqual(response.status_code,302, getattr(response,'context',None) and str(response.context['route_formset'].errors))
         return Trip.objects.latest('pk')
+    def test_dispatcher_can_attach_instruction_for_only_assigned_driver(self):
+        pdf=SimpleUploadedFile('port.pdf',b'%PDF-1.4\nexample',content_type='application/pdf')
+        response=self.client.post('/trips/new/',{**self.data(),'instructions':[pdf]})
+        self.assertEqual(response.status_code,302)
+        trip=Trip.objects.latest('pk');doc=trip.documents.get(kind='instruction')
+        self.client.force_login(self.driver)
+        self.assertContains(self.client.get(reverse('trip_detail',args=[trip.pk])),'port.pdf')
+        response=self.client.get(reverse('trip_instruction',args=[doc.pk]))
+        self.assertEqual(response.status_code,200);response.close()
+        self.client.force_login(self.other)
+        self.assertEqual(self.client.get(reverse('trip_instruction',args=[doc.pk])).status_code,404)
+
+    def test_invalid_instruction_does_not_create_trip(self):
+        bad=SimpleUploadedFile('fake.pdf',b'not a pdf',content_type='application/pdf')
+        response=self.client.post('/trips/new/',{**self.data(),'instructions':[bad]})
+        self.assertEqual(response.status_code,200)
+        self.assertFalse(Trip.objects.exists())
+    def test_instruction_photo_is_viewable_without_document_upload_permission(self):
+        from io import BytesIO
+        from PIL import Image
+        from fleet.permissions_models import DriverPermissionSettings
+        image=BytesIO();Image.new('RGB',(12,12),'white').save(image,format='PNG')
+        photo=SimpleUploadedFile('drive.png',image.getvalue(),content_type='image/png')
+        self.assertEqual(self.client.post('/trips/new/',{**self.data(),'instructions':[photo]}).status_code,302)
+        doc=Document.objects.get(kind='instruction')
+        settings,_=DriverPermissionSettings.objects.get_or_create(pk=1)
+        settings.upload_documents=False;settings.save()
+        self.client.force_login(self.driver)
+        response=self.client.get(reverse('trip_instruction',args=[doc.pk]))
+        self.assertEqual(response.status_code,200);self.assertEqual(response['Content-Type'],'image/png');response.close()
     def test_google_maps_link_on_each_stop_and_coordinate_fallback(self):
         loading='https://maps.app.goo.gl/Example123'
         unloading='https://www.google.com/maps/place/Test/@49.23,28.46,16z'

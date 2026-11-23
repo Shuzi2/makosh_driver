@@ -524,6 +524,7 @@ class Document(models.Model):
         SIGNED_TTN = "signed_ttn", "Підписана ТТН"
         WEIGHT = "weight", "Ваговий талон"
         OTHER = "other", "Інший документ"
+        INSTRUCTION = "instruction", "Інструкція для водія"
     trip = models.ForeignKey(Trip, on_delete=models.PROTECT, related_name="documents")
     stop = models.ForeignKey(TripStop,null=True,blank=True,on_delete=models.PROTECT,related_name='documents')
     ttn_number = models.CharField('Номер ТТН',max_length=100,blank=True)
