@@ -2,13 +2,17 @@ import warnings
 import re
 from io import BytesIO
 from pathlib import Path
-from PIL import Image, UnidentifiedImageError
+from PIL import Image, ImageOps, UnidentifiedImageError
+from pillow_heif import register_heif_opener
 from django import forms
 from django.conf import settings
 from django.contrib.auth.forms import AuthenticationForm
 from django.core.exceptions import ValidationError
+from django.core.files.uploadedfile import SimpleUploadedFile
 from django.utils import timezone
 from .models import User, Vehicle, Trailer, Trip, Document, normalize_phone
+
+register_heif_opener()
 
 class VehicleSelect(forms.Select):
     def create_option(self, name, value, label, selected, index, subindex=None, attrs=None):
@@ -248,7 +252,7 @@ class DocumentForm(forms.ModelForm):
         model=Document
         fields=["stop","kind","ttn_number","file"]
         labels={"file":"Фото або PDF (до 20 МБ)"}
-        widgets={"file":forms.ClearableFileInput(attrs={"accept":"image/jpeg,image/png,image/webp,application/pdf"})}
+        widgets={"file":forms.ClearableFileInput(attrs={"accept":"image/*,.heic,.heif,application/pdf"})}
     def __init__(self,*args,**kwargs):
         trip=kwargs.pop('trip',None)
         super().__init__(*args,**kwargs)
@@ -285,12 +289,32 @@ class DocumentForm(forms.ModelForm):
                     warnings.simplefilter("error", Image.DecompressionBombWarning)
                     image = Image.open(BytesIO(data))
                     formats = {"JPEG":(".jpg",".jpeg"), "PNG":(".png",), "WEBP":(".webp",)}
-                    if image.format not in formats or ext not in formats[image.format]:
+                    image_format=image.format
+                    if image_format not in (*formats, 'HEIF', 'AVIF', 'GIF', 'BMP', 'TIFF'):
                         raise ValueError("Unsupported image")
-                    self.detected_type = Image.MIME[image.format]
                     image.verify()
+                    if image_format in formats:
+                        self.detected_type=Image.MIME[image_format]
+                        if ext not in formats[image_format]:
+                            f.name=(Path(f.name).stem or 'photo')+formats[image_format][0]
+                    else:
+                        with Image.open(BytesIO(data)) as original:
+                            original.seek(0)
+                            converted=ImageOps.exif_transpose(original)
+                            if converted.mode in ('RGBA','LA') or 'transparency' in converted.info:
+                                rgba=converted.convert('RGBA')
+                                background=Image.new('RGB',rgba.size,'white')
+                                background.paste(rgba,mask=rgba.getchannel('A'))
+                                converted=background
+                            else:
+                                converted=converted.convert('RGB')
+                            output=BytesIO();converted.save(output,format='JPEG',quality=92)
+                        if output.tell()>settings.MAX_DOCUMENT_BYTES:
+                            raise ValidationError('Фото після обробки завелике. Оберіть менше фото.')
+                        f=SimpleUploadedFile((Path(f.name).stem or 'photo')+'.jpg',output.getvalue(),content_type='image/jpeg')
+                        self.detected_type='image/jpeg'
             except (UnidentifiedImageError, OSError, ValueError, Image.DecompressionBombError, Image.DecompressionBombWarning):
-                raise ValidationError("Підтримуються справжні JPG, PNG, WebP та PDF. HEIC потрібно експортувати як JPG.")
+                raise ValidationError("Не вдалося прочитати фото. Оберіть інше фото або PDF і спробуйте ще раз.")
         f.seek(0)
         return f
 

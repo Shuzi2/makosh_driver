@@ -1226,6 +1226,39 @@ class FleetTests(TestCase):
         self.upload(file=SimpleUploadedFile('evil.png',b'<script>bad()</script>',content_type='image/png'))
         self.upload(file=SimpleUploadedFile('evil.html',b'%PDF-fake',content_type='application/pdf'))
         self.assertEqual(Document.objects.count(),1)
+    def test_upload_iphone_images_with_unreliable_filename_and_heic(self):
+        import pillow_heif
+        self.login_as(self.driver);self.accept()
+        image=Image.new('RGB',(10,10),'white')
+        jpeg=BytesIO();image.save(jpeg,format='JPEG')
+        self.upload(file=SimpleUploadedFile('image',jpeg.getvalue(),content_type='application/octet-stream'))
+        heic=BytesIO();pillow_heif.register_heif_opener();image.save(heic,format='HEIF')
+        self.upload(file=SimpleUploadedFile('IMG_1234.HEIC',heic.getvalue(),content_type='image/heic'))
+        docs=list(Document.objects.order_by('pk'))
+        self.assertEqual(len(docs),2)
+        for doc in docs:
+            self.assertEqual(doc.content_type,'image/jpeg')
+            self.assertTrue(doc.original_name.lower().endswith(('.jpg','.jpeg')))
+            with Image.open(doc.file) as saved: self.assertEqual(saved.format,'JPEG')
+    def test_jpeg_upload_without_extension(self):
+        self.login_as(self.driver);self.accept()
+        data=BytesIO();Image.new('RGB',(10,10)).save(data,format='JPEG')
+        self.upload(file=SimpleUploadedFile('image',data.getvalue(),content_type='application/octet-stream'))
+        doc=Document.objects.get()
+        self.assertEqual(doc.content_type,'image/jpeg')
+        self.assertTrue(doc.original_name.endswith('.jpg'))
+    def test_iphone_photo_retry_does_not_create_duplicate(self):
+        import pillow_heif
+        self.login_as(self.driver);self.accept()
+        pillow_heif.register_heif_opener()
+        image=BytesIO();Image.new('RGB',(10,10),'white').save(image,format='HEIF')
+        request_id=str(uuid.uuid4())
+        def send():
+            return self.client.post(self.url('document_upload',self.trip.pk),{'kind':'ttn','request_id':request_id,'file':SimpleUploadedFile('IMG_1234.HEIC',image.getvalue(),content_type='image/heic')},HTTP_ACCEPT='application/json')
+        first=send();second=send()
+        self.assertEqual(first.status_code,200)
+        self.assertEqual(second.json(),first.json())
+        self.assertEqual(Document.objects.count(),1)
     @override_settings(MAX_DOCUMENT_BYTES=10)
     def test_reject_large_file(self):
         self.login_as(self.driver);self.accept();self.upload();self.assertFalse(Document.objects.exists())
