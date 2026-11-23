@@ -168,7 +168,7 @@ class RouteTests(TestCase):
         self.client.force_login(self.driver)
         self.assertContains(self.client.get(reverse('trip_detail',args=[trip.pk])),'port.pdf')
         response=self.client.get(reverse('trip_instruction',args=[doc.pk]))
-        self.assertEqual(response.status_code,200);response.close()
+        self.assertEqual(response.status_code,200);self.assertTrue(b''.join(response.streaming_content))
         self.client.force_login(self.other)
         self.assertEqual(self.client.get(reverse('trip_instruction',args=[doc.pk])).status_code,404)
 
@@ -189,7 +189,7 @@ class RouteTests(TestCase):
         settings.upload_documents=False;settings.save()
         self.client.force_login(self.driver)
         response=self.client.get(reverse('trip_instruction',args=[doc.pk]))
-        self.assertEqual(response.status_code,200);self.assertEqual(response['Content-Type'],'image/png');response.close()
+        self.assertEqual(response.status_code,200);self.assertEqual(response['Content-Type'],'image/png');self.assertTrue(b''.join(response.streaming_content))
     def test_google_maps_link_on_each_stop_and_coordinate_fallback(self):
         loading='https://maps.app.goo.gl/Example123'
         unloading='https://www.google.com/maps/place/Test/@49.23,28.46,16z'
