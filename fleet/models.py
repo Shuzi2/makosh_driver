@@ -351,7 +351,7 @@ class Trip(models.Model):
         return dict(Vehicle.Kind.choices).get(self.completed_vehicle_kind if self.completed_vehicle_kind is not None else self.vehicle.kind, '')
     @classmethod
     def ordered_queue(cls, queryset):
-        return queryset.order_by(F('queue_priority_at').desc(nulls_last=True),'planned_date','id')
+        return queryset.order_by(F('queue_priority_at').desc(nulls_last=True),'id')
     @property
     def is_active(self):
         return self.status in self.ACTIVE

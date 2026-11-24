@@ -1805,6 +1805,23 @@ class FleetTests(TestCase):
         self.accept(first)
         first.refresh_from_db();self.assertEqual(first.status,'planned')
         self.client.post(self.url('trip_start',first.pk));self.assertEqual(Trip.objects.filter(vehicle=self.vehicle,status__in=Trip.ACTIVE).count(),1)
+    def test_queue_keeps_creation_order_even_if_later_trip_has_earlier_date(self):
+        from fleet.queue_promotion import promote_ready
+        from fleet.views import queue_block_reason
+        first=self.queue_trip(days=2);second=self.queue_trip(days=1)
+        self.assertEqual(list(Trip.ordered_queue(self.vehicle.trips.filter(status='queued')).values_list('pk',flat=True)),[first.pk,second.pk])
+        self.login_as(self.logistic)
+        cards=self.client.get('/').context['cards']
+        card=next(card for card in cards if card['vehicle'].pk==self.vehicle.pk)
+        self.assertEqual([trip.pk for trip in card['queue']],[first.pk,second.pk])
+        self.login_as(self.driver)
+        upcoming=self.client.get(reverse('driver_trips')).context['upcoming_trips']
+        self.assertEqual([item['trip'].pk for item in upcoming],[first.pk,second.pk])
+        self.finish()
+        self.assertIn('попередній рейс',queue_block_reason(second))
+        promote_ready()
+        first.refresh_from_db();second.refresh_from_db()
+        self.assertEqual(first.status,'planned');self.assertEqual(second.status,'queued')
     def test_queue_waits_for_driver_on_another_vehicle(self):
         self.finish();queued=self.queue_trip(driver=self.other)
         self.login_as(self.logistic)

@@ -10,6 +10,7 @@ from django.db import transaction
 from django.db.models import Sum,Count,Q
 from django.shortcuts import get_object_or_404,render,redirect
 from django.contrib import messages
+from django.utils import timezone
 from .models import DriverReportHistory,Trip,TripEconomics,DriverEconomicsDefaults,User
 
 def report_kilometers(trip,inputs):
@@ -25,7 +26,7 @@ def report_date(row,kind):
     else:
         try: value=(row.economics.report_overrides or {}).get('manual_v2',{}).get('date')
         except TripEconomics.DoesNotExist: value=None
-        fallback=timezone.localtime(row.completed_at).date() if row.completed_at else None
+        fallback=timezone.localtime(row.created_at).date() if row.created_at else None
     if value:
         try: return date.fromisoformat(value)
         except ValueError: return fallback
@@ -377,7 +378,7 @@ def report_context(driver=None,label=None,period=None,query=''):
             base_economics.report_overrides={key:value for key,value in (base_economics.report_overrides or {}).items() if key!='manual_v2'}
         base_finances=finances(trip,base_economics)
         original_values=base_finances | {'kilometers':trip.distance_km,'fuel_litres':trip.fuel_used_l,'report_number':f'№{trip.pk}',
-            'date':trip.completed_at.strftime('%d.%m.%Y') if trip.completed_at else '',
+            'date':timezone.localtime(trip.created_at).strftime('%d.%m.%Y') if trip.created_at else '',
             'empty_route':f'{trip.acceptance_location} → {trip.origin}' if trip.acceptance_location else '',
             'loading':loading,'unloading':unloading,'route':route}
         trip.correction_list=[{'label':REPORT_LABELS.get(key,key),'original':original_values.get(key),'current':value} for key,value in trip.report_manual.items()]
@@ -396,7 +397,6 @@ def report_context(driver=None,label=None,period=None,query=''):
         return all(term in text for term in search_terms)
     if search_terms:
         historical=[row for row in historical if (str(row.source_number).lstrip('№# ')==number_query.group(1) if number_query else matches(row.source_number,row.display.get('date'),row.display.get('empty_route'),row.display.get('loading'),row.display.get('unloading'),row.display.get('route')))]
-        from django.utils import timezone
         trips=[trip for trip in trips if (str(trip.report_fields['report_number']).lstrip('№# ')==number_query.group(1) or str(trip.pk)==number_query.group(1) if number_query else matches(trip.report_fields['report_number'],trip.pk,trip.report_fields['date'],trip.report_fields['empty_route'],trip.report_fields['loading'],trip.report_fields['unloading'],trip.report_fields['route'],trip.report_tractor_plate))]
     insights=report_insights(historical,trips)
     return {'driver':driver,'name':driver.full_name if driver else label,'historical':historical,'trips':trips,'history_count':len(historical),'trip_count':len(trips),'history_sums':history_totals(historical),'live_finance':live_financial_totals(trips),'period_totals':period_totals(historical,trips),'insight_groups':[('Архів таблиці',insights['historical']),('Рейси сайту',insights['live'])],'period':period,'query':query}

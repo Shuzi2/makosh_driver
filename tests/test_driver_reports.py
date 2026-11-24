@@ -19,6 +19,31 @@ class DriverReportsTests(TestCase):
         self.admin=User.objects.create_user('+380501234501',role='admin',full_name='Логіст',must_change_password=False)
         self.driver=User.objects.create_user('+380501234502',role='driver',full_name='Тестовий Водій',must_change_password=False)
 
+    def test_driver_report_uses_creation_date_for_period_totals_and_excel(self):
+        from datetime import datetime
+        from io import BytesIO
+        from zipfile import ZipFile
+        vehicle=Vehicle.objects.create(plate='DATE123',kind='tent')
+        trip=Trip.objects.create(vehicle=vehicle,driver=self.driver,created_by=self.admin,origin='А',destination='Б',cargo='Зерно',planned_tons=25,planned_date='2026-11-25',status='completed',completed_at=timezone.make_aware(datetime(2026,11,27,12)),distance_km=100)
+        Trip.objects.filter(pk=trip.pk).update(created_at=timezone.make_aware(datetime(2026,11,24,12)))
+        self.client.force_login(self.admin)
+        detail=reverse('driver_report_detail',args=[self.driver.pk])
+        params={'start':'2026-11-24','end':'2026-11-24'}
+        page=self.client.get(detail,params)
+        self.assertEqual(page.context['trip_count'],1)
+        self.assertEqual(page.context['trips'][0].report_fields['date'],'24.11.2026')
+        self.assertEqual(page.context['period_totals']['live']['kilometers']['value'],100)
+        self.assertEqual(self.client.get(detail,{'start':'2026-11-27','end':'2026-11-27'}).context['trip_count'],0)
+        export=self.client.get(reverse('driver_report_export',args=[self.driver.pk]),params)
+        with ZipFile(BytesIO(export.content)) as book:
+            self.assertIn('24.11.2026',book.read('xl/worksheets/sheet1.xml').decode())
+        self.assertEqual(self.client.get(reverse('report'),{'start':'2026-11-27','end':'2026-11-27'}).context['count'],1)
+        TripEconomics.objects.create(trip=trip,report_overrides={'manual_v2':{'date':'2026-11-26'}})
+        self.assertEqual(self.client.get(detail,params).context['trip_count'],0)
+        corrected=self.client.get(detail,{'start':'2026-11-26','end':'2026-11-26'}).context['trips'][0]
+        self.assertEqual(corrected.report_fields['date'],'26.11.2026')
+        self.assertEqual(next(c for c in corrected.correction_list if c['label']=='Дата')['original'],'24.11.2026')
+
     def test_driver_report_includes_all_active_route_points_in_table_search_and_excel(self):
         from fleet.driver_report_export import live_row
         vehicle=Vehicle.objects.create(plate='ROUTE123',kind='tent')
@@ -84,7 +109,9 @@ class DriverReportsTests(TestCase):
         vehicle=Vehicle.objects.create(plate='SUM001',kind='tent')
         now=timezone.now()
         def completed(days, km, fuel):
-            return Trip.objects.create(vehicle=vehicle,driver=self.driver,created_by=self.admin,origin='А',destination='Б',cargo='Товар',planned_tons=1,planned_date=timezone.localdate(),status='completed',completed_at=now-timedelta(days=days),distance_km=km,fuel_used_l=fuel)
+            trip=Trip.objects.create(vehicle=vehicle,driver=self.driver,created_by=self.admin,origin='А',destination='Б',cargo='Товар',planned_tons=1,planned_date=timezone.localdate(),status='completed',completed_at=now-timedelta(days=days),distance_km=km,fuel_used_l=fuel)
+            Trip.objects.filter(pk=trip.pk).update(created_at=now-timedelta(days=days))
+            return trip
         chosen=completed(0,100,Decimal('30'))
         completed(0,50,None)
         completed(10,900,Decimal('200'))
