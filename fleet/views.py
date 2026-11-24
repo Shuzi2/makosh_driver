@@ -163,7 +163,7 @@ def dashboard(request):
             queue_by_vehicle.setdefault(trip.vehicle_id, []).append(trip)
         kind=request.GET.get('kind','')
         kind=kind if kind in ('tent','grain') else ''
-        vehicles=Vehicle.objects.select_related("default_driver")
+        vehicles=Vehicle.objects.select_related("default_driver", "trailer")
         if kind: vehicles=vehicles.filter(kind=kind)
         for vehicle in vehicles:
             trip=by_vehicle.get(vehicle.id)

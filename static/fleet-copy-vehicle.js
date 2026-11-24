@@ -4,7 +4,11 @@
   const notice=document.querySelector('[data-copy-feedback]');let timer;
   const textFor=card=>{
     const d=card.dataset;
-    return [`Перевізник: ${fleet.dataset.copyCarrier||'Не вказано'}`,`Марка: ${d.copyBrand||'Не вказано'}`,`Тягач: ${d.copyTractor||'Не вказано'}`,`Причіп: ${d.copyTrailer||'Не закріплено'}`,`Тип: ${d.copyKind||'Не вказано'}`,`Водій: ${d.copyDriver||'Не закріплений'}`,`Телефон: ${d.copyPhone||'Не вказано'}`,`Посвідчення водія: ${d.copyLicense||'Не вказано'}`,`Паспорт: ${d.copyPassport||'Не вказано'}`,`Місце зберігання авто: ${fleet.dataset.copyStorage||'Не вказано'}`].join('\n');
+    const specs=(prefix,label)=>{
+      const length=d[`copy${prefix}Length`],width=d[`copy${prefix}Width`],height=d[`copy${prefix}Height`],empty=d[`copy${prefix}EmptyWeight`],max=d[`copy${prefix}MaxWeight`];
+      return [`Габарити ${label} (Д × Ш × В), мм: ${[length,width,height].map(v=>v||'—').join(' × ')}`,`Маса ${label} (без вантажу / максимальна), кг: ${empty||'—'} / ${max||'—'}`];
+    };
+    return [`Перевізник: ${fleet.dataset.copyCarrier||'Не вказано'}`,`Марка: ${d.copyBrand||'Не вказано'}`,`Тягач: ${d.copyTractor||'Не вказано'}`,...specs('Tractor','тягача'),`Причіп: ${d.copyTrailer||'Не закріплено'}`,...(d.copyTrailer?specs('Trailer','причепа'):[]),`Тип: ${d.copyKind||'Не вказано'}`,`Водій: ${d.copyDriver||'Не закріплений'}`,`Телефон: ${d.copyPhone||'Не вказано'}`,`Посвідчення водія: ${d.copyLicense||'Не вказано'}`,`Паспорт: ${d.copyPassport||'Не вказано'}`,`Місце зберігання авто: ${fleet.dataset.copyStorage||'Не вказано'}`].join('\n');
   };
   function manualCopy(text){
     const dialog=document.createElement('dialog');dialog.className='fleet-copy-dialog';dialog.setAttribute('aria-labelledby','fleet-copy-title');

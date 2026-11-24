@@ -68,3 +68,4 @@
 .presence-state::before { content: '●'; margin-right: 5px; font-size: .7em; }
 .presence-state.online { color: #18805d; }
 [data-presence-user] small { display: block; color: #73828d; margin-top: 4px; white-space: nowrap; }
+.copy-spec-item{border:1px solid #e0e6ea;border-radius:10px;margin:8px 0;background:#fbfcfc}.copy-spec-item summary{cursor:pointer;padding:12px 14px;font-weight:600;color:#243b46}.copy-spec-form{display:grid;grid-template-columns:repeat(5,minmax(110px,1fr));gap:12px;align-items:end;padding:0 14px 14px}.copy-spec-form p{margin:0}.copy-spec-form label{display:block;margin-bottom:5px}.copy-spec-form input{width:100%}.copy-spec-form button{justify-self:start}@media(max-width:900px){.copy-spec-form{grid-template-columns:repeat(2,minmax(0,1fr))}}@media(max-width:480px){.copy-spec-form{grid-template-columns:1fr}}

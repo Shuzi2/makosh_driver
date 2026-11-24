@@ -29,14 +29,33 @@ class DriverCopyDocumentsForm(forms.ModelForm):
         model=User
         fields=['driver_license_number','passport_number']
 
+class CopySpecificationsForm(forms.ModelForm):
+    class Meta:
+        fields=['length_mm','width_mm','height_mm','empty_weight_kg','max_weight_kg']
+    def clean(self):
+        data=super().clean()
+        if data.get('empty_weight_kg') and data.get('max_weight_kg') and data['empty_weight_kg']>data['max_weight_kg']:
+            self.add_error('max_weight_kg','Максимальна маса не може бути меншою за масу без вантажу.')
+        return data
+
+class TractorCopySpecificationsForm(CopySpecificationsForm):
+    class Meta(CopySpecificationsForm.Meta):
+        from .models import Vehicle
+        model=Vehicle
+
+class TrailerCopySpecificationsForm(CopySpecificationsForm):
+    class Meta(CopySpecificationsForm.Meta):
+        from .models import Trailer
+        model=Trailer
+
 
 @staff_required
 @require_http_methods(['GET','POST'])
 def copy_data(request):
-    from .models import FleetCopySettings
+    from .models import FleetCopySettings, Vehicle, Trailer
     settings=FleetCopySettings.objects.filter(pk=1).first() or FleetCopySettings(pk=1)
     settings_form=FleetCopySettingsForm(instance=settings)
-    selected=None;driver_form=None
+    selected=None;driver_form=None;selected_spec=None;spec_form=None;spec_action=None
     if request.method=='POST':
         if request.POST.get('action')=='settings':
             settings_form=FleetCopySettingsForm(request.POST,instance=settings)
@@ -55,11 +74,25 @@ def copy_data(request):
                 AuditEvent.objects.create(actor=request.user,action='Оновлено документи для копіювання',detail=selected.full_name)
                 messages.success(request,'Документи водія збережено.')
                 return redirect('admin_copy_data')
+        elif request.POST.get('action') in ('tractor','trailer'):
+            spec_action=request.POST['action']
+            model,form_class,id_key=(Vehicle,TractorCopySpecificationsForm,'vehicle_id') if spec_action=='tractor' else (Trailer,TrailerCopySpecificationsForm,'trailer_id')
+            object_id=request.POST.get(id_key,'')
+            if not object_id.isascii() or not object_id.isdigit() or len(object_id)>18: raise Http404
+            selected_spec=get_object_or_404(model,pk=int(object_id))
+            spec_form=form_class(request.POST,instance=selected_spec,prefix=f'{spec_action}-{selected_spec.pk}')
+            if spec_form.is_valid():
+                spec_form.save()
+                AuditEvent.objects.create(actor=request.user,action='Оновлено габарити для копіювання',detail=f'{spec_action}: {selected_spec.plate}')
+                messages.success(request,'Дані авто збережено.')
+                return redirect('admin_copy_data')
         else:
             raise Http404
     drivers=User.objects.filter(role='driver').order_by('full_name','pk')
     rows=[{'driver':driver,'form':driver_form if selected and selected.pk==driver.pk else DriverCopyDocumentsForm(instance=driver)} for driver in drivers]
-    return render(request,'fleet/admin_copy_data.html',{'settings_form':settings_form,'rows':rows})
+    tractors=[{'item':item,'form':spec_form if spec_action=='tractor' and selected_spec and selected_spec.pk==item.pk else TractorCopySpecificationsForm(instance=item,prefix=f'tractor-{item.pk}')} for item in Vehicle.objects.order_by('plate')]
+    trailers=[{'item':item,'form':spec_form if spec_action=='trailer' and selected_spec and selected_spec.pk==item.pk else TrailerCopySpecificationsForm(instance=item,prefix=f'trailer-{item.pk}')} for item in Trailer.objects.order_by('plate')]
+    return render(request,'fleet/admin_copy_data.html',{'settings_form':settings_form,'rows':rows,'tractors':tractors,'trailers':trailers})
 
 
 def _settings():

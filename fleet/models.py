@@ -72,7 +72,16 @@ class FleetCopySettings(models.Model):
         return super().save(*args,**kwargs)
 
 
-class Trailer(models.Model):
+class CopySpecifications(models.Model):
+    length_mm = models.PositiveIntegerField('Довжина, мм', null=True, blank=True, validators=[MinValueValidator(1), MaxValueValidator(99999)])
+    width_mm = models.PositiveIntegerField('Ширина, мм', null=True, blank=True, validators=[MinValueValidator(1), MaxValueValidator(99999)])
+    height_mm = models.PositiveIntegerField('Висота, мм', null=True, blank=True, validators=[MinValueValidator(1), MaxValueValidator(99999)])
+    empty_weight_kg = models.PositiveIntegerField('Маса без вантажу, кг', null=True, blank=True, validators=[MinValueValidator(1), MaxValueValidator(999999)])
+    max_weight_kg = models.PositiveIntegerField('Максимальна маса, кг', null=True, blank=True, validators=[MinValueValidator(1), MaxValueValidator(999999)])
+    class Meta:
+        abstract = True
+
+class Trailer(CopySpecifications):
     plate = models.CharField('Номер причепа', max_length=20, unique=True)
     kind = models.CharField('Тип причепа',max_length=12,choices=[('tent','Тент'),('grain','Зерновоз')])
     class Meta:
@@ -80,7 +89,7 @@ class Trailer(models.Model):
     def __str__(self): return self.plate
 
 
-class Vehicle(models.Model):
+class Vehicle(CopySpecifications):
     class Kind(models.TextChoices):
         TENT = "tent", "Тент"
         GRAIN = "grain", "Зерновоз"
