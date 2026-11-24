@@ -62,3 +62,9 @@
 @media(max-width:1250px){.account-edit-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media(max-width:700px){.account-edit-page{padding:18px}.account-edit-grid{grid-template-columns:1fr}.account-edit-heading{flex-wrap:wrap}.account-edit-toolbar{align-items:flex-start;flex-direction:column}.account-edit-info{align-items:flex-start;flex-direction:column}}
 .copy-driver-row{border-top:1px solid #e2e7ea;padding:16px 0;display:grid;grid-template-columns:minmax(160px,1fr) minmax(150px,1fr) minmax(150px,1fr) auto;gap:14px;align-items:end}.copy-driver-row h3{margin:0;align-self:center}.copy-driver-row p{margin:0}.copy-driver-row label{display:block;margin-bottom:5px}.copy-driver-row input{width:100%}@media(max-width:760px){.copy-driver-row{grid-template-columns:1fr}.copy-driver-row .btn{justify-self:start}}
+.presence-help { color: #667785; font-size: .8rem; margin: 0 0 12px; }
+.presence-help [data-presence-error] { color: #ae431c; font-weight: 600; }
+.presence-state { display: inline-block; color: #677784; font-weight: 600; white-space: nowrap; }
+.presence-state::before { content: '●'; margin-right: 5px; font-size: .7em; }
+.presence-state.online { color: #18805d; }
+[data-presence-user] small { display: block; color: #73828d; margin-top: 4px; white-space: nowrap; }

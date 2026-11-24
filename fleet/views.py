@@ -648,8 +648,27 @@ def accounts(request):
     if role != 'all': users = users.filter(role=role)
     if search:
         users = users.filter(Q(full_name__icontains=search) | Q(phone__icontains=search))
+    from .session_activity import presence_for_accounts
+    users = list(users)
+    presence = presence_for_accounts(users)
+    for account in users:
+        account.presence = presence[account.pk]
     response=render(request,"fleet/accounts.html",{"users":users,"search":search,"counts":counts,"state":state,"selected_role":role,"vehicles":Vehicle.objects.select_related('default_driver'),"form":form,"temporary":temporary})
     response["Cache-Control"]="no-store"
+    return response
+
+@login_required
+@require_GET
+def accounts_presence(request):
+    if not request.user.manages_users: raise PermissionDenied
+    from .session_activity import presence_for_accounts
+    presence = presence_for_accounts(User.objects.all())
+    payload = {}
+    for pk, status in presence.items():
+        last = status['last_seen']
+        payload[pk] = {'online': status['online'], 'last_seen': timezone.localtime(last).strftime('%d.%m.%Y %H:%M') if last else ''}
+    response = JsonResponse({'users': payload})
+    response['Cache-Control'] = 'no-store'
     return response
 
 @login_required

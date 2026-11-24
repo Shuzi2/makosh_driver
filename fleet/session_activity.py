@@ -2,6 +2,7 @@
 from datetime import timedelta
 from django.contrib.auth import SESSION_KEY, HASH_SESSION_KEY
 from django.contrib.sessions.models import Session
+from django.db.models import Max
 from django.utils import timezone
 from django.utils.crypto import constant_time_compare, salted_hmac
 from .models import UserSessionActivity
@@ -42,3 +43,30 @@ def valid_sessions(account, current_key=None):
     for row in rows: row['activity']=activity.get(row['token'])
     rows.sort(key=lambda row: row['activity'].last_seen_at.timestamp() if row['activity'] else 0,reverse=True)
     return rows
+
+def presence_for_accounts(accounts):
+    """Recent connections from valid sessions, plus the last recorded connection."""
+    accounts = {account.pk: account for account in accounts}
+    now = timezone.now()
+    result = {pk: {'online': False, 'last_seen': None} for pk in accounts}
+    for row in UserSessionActivity.objects.filter(user_id__in=accounts).values('user_id').annotate(last=Max('last_seen_at')):
+        result[row['user_id']]['last_seen'] = row['last']
+    recent = dict(UserSessionActivity.objects.filter(
+        user_id__in=[pk for pk, account in accounts.items() if account.is_active],
+        last_seen_at__gte=now-timedelta(minutes=5), last_seen_at__lte=now,
+    ).values_list('session_hash', 'user_id'))
+    if not recent:
+        return result
+    for session in Session.objects.filter(expire_date__gt=now).iterator(chunk_size=200):
+        user_id = recent.get(session_token(session.session_key))
+        if user_id is None or result[user_id]['online']:
+            continue
+        data = session.get_decoded()
+        account = accounts[user_id]
+        actual = data.get(HASH_SESSION_KEY, '')
+        if str(data.get(SESSION_KEY, '')) == str(user_id) and actual and any(
+            constant_time_compare(actual, expected)
+            for expected in [account.get_session_auth_hash(), *account.get_session_auth_fallback_hash()]
+        ):
+            result[user_id]['online'] = True
+    return result
