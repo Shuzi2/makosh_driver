@@ -35,6 +35,17 @@ class RouteTests(TestCase):
         self.accept(trip);self.act(trip,'arrive');self.act(trip,'depart');self.act(trip,'arrive')
         return trip
 
+    def test_three_decimal_weight_survives_completion_and_report(self):
+        trip=self.final_trip()
+        for point in trip.stops.all(): self.upload(trip,point,kind='ttn' if point.kind=='load' else 'signed_ttn')
+        response=self.client.post(reverse('driver_action',args=[trip.pk]),self.payload(trip,empty_distance_km='0',loaded_distance_km='420',fuel_used_l='135',actual_tons='24.255'))
+        self.assertEqual(response.json()['outcome'],'confirmed')
+        trip.refresh_from_db()
+        self.assertEqual(trip.actual_tons,Decimal('24.255'))
+        self.assertEqual(trip.stops.last().actual_tons,Decimal('24.255'))
+        self.client.force_login(self.admin)
+        self.assertContains(self.client.get(reverse('report')),'24,255')
+
     def test_completion_requires_documents_and_records_unloading_weight(self):
         trip=self.final_trip(); url=reverse('driver_action',args=[trip.pk])
         unload=trip.stops.last()
@@ -466,7 +477,7 @@ class RouteTests(TestCase):
         self.assertContains(self.client.get(f'/trips/{trip.pk}/'),'Черкаси')
         self.assertContains(self.client.get('/'),'Точка 1 із 4')
         self.client.force_login(self.driver)
-        response=self.client.get('/');self.assertContains(response,'Точки маршруту');self.assertContains(response,'Забрати 10,00 т')
+        response=self.client.get('/');self.assertContains(response,'Точки маршруту');self.assertContains(response,'Забрати 10,000 т')
         self.assertEqual(self.client.get(f'/trips/{trip.pk}/edit/').status_code,403)
         self.client.force_login(self.other);self.assertEqual(self.client.get(f'/trips/{trip.pk}/').status_code,404)
     def test_driver_sees_all_contacts_after_acceptance_and_only_status_controls(self):

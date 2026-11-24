@@ -47,9 +47,9 @@ def stop_action(request,pk):
                 from decimal import Decimal,InvalidOperation
                 try:
                     tons=Decimal(value.replace(',','.'))
-                    if not tons.is_finite() or not Decimal('0.01')<=tons<=60 or tons.as_tuple().exponent < -2: raise ValueError()
+                    if not tons.is_finite() or not Decimal('0.01')<=tons<=60 or tons.as_tuple().exponent < -3: raise ValueError()
                 except (ValueError,InvalidOperation):
-                    messages.error(request,'Вага цієї операції має бути від 0,01 до 60 т, до двох знаків після коми.');return trip_response(request,pk)
+                    messages.error(request,'Вага цієї операції має бути від 0,01 до 60 т, до трьох знаків після коми.');return trip_response(request,pk)
             else: tons=stop.actual_tons
             if request.user.role=='driver' and (final or request.POST.get('confirm_without_signed_ttn')!='1'):
                 from .routes import route_reminder_context

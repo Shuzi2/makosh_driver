@@ -19,8 +19,8 @@ class RouteWeightsForm(forms.Form):
         for point in self.points:
             name='actual_tons' if len(self.points)==1 else f'weight_{point.pk}'
             self.fields[name]=forms.DecimalField(label=f'Розвантаження · {point.driver_place["name"]}, т',
-                required=False,min_value=Decimal('0.01'),max_value=60,max_digits=5,decimal_places=2,
-                widget=forms.NumberInput(attrs={'step':'0.01','placeholder':'Не вказана'}),
+                required=False,min_value=Decimal('0.01'),max_value=60,max_digits=6,decimal_places=3,
+                widget=forms.NumberInput(attrs={'step':'0.001','placeholder':'Не вказана'}),
                 help_text='Можна залишити порожнім, якщо вага ще невідома.')
             self.initial[name]=point.actual_tons
 

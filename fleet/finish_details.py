@@ -28,10 +28,10 @@ class DriverFinishForm(forms.Form):
         if points:
             for point in points:
                 name='actual_tons' if len(points)==1 else f'unload_weight_{point.pk}'
-                self.fields[name]=forms.DecimalField(label='Фактична вага розвантаження, т' if len(points)==1 else f'Вага розвантаження · {point.address}, т',min_value=0.01,max_value=60,max_digits=4,decimal_places=2,initial=point.actual_tons,widget=forms.NumberInput(attrs={'inputmode':'decimal','step':'0.01','placeholder':'Наприклад, 23.75'}))
+                self.fields[name]=forms.DecimalField(label='Фактична вага розвантаження, т' if len(points)==1 else f'Вага розвантаження · {point.address}, т',min_value=0.01,max_value=60,max_digits=5,decimal_places=3,initial=point.actual_tons,widget=forms.NumberInput(attrs={'inputmode':'decimal','step':'0.001','placeholder':'Наприклад, 24.255'}))
                 self.weight_points.append((name,point))
         else:
-            self.fields['actual_tons']=forms.DecimalField(label='Фактична вага розвантаження, т',min_value=0.01,max_value=60,max_digits=4,decimal_places=2,initial=trip.actual_tons if trip else None,widget=forms.NumberInput(attrs={'inputmode':'decimal','step':'0.01','placeholder':'Наприклад, 23.75'}))
+            self.fields['actual_tons']=forms.DecimalField(label='Фактична вага розвантаження, т',min_value=0.01,max_value=60,max_digits=5,decimal_places=3,initial=trip.actual_tons if trip else None,widget=forms.NumberInput(attrs={'inputmode':'decimal','step':'0.001','placeholder':'Наприклад, 24.255'}))
 
     def clean(self):
         data=super().clean()

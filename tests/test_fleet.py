@@ -1105,7 +1105,7 @@ class FleetTests(TestCase):
     def test_invalid_weight_is_not_saved(self):
         self.login_as(self.driver)
         self.accept()
-        for weight in ['NaN','Infinity','-2','61','24.123']:
+        for weight in ['NaN','Infinity','-2','61','24.1234']:
             self.client.post(self.url('trip_status',self.trip.pk),{'status':'loading','actual_tons':weight})
             self.trip.refresh_from_db();self.assertEqual(self.trip.status,'planned');self.assertIsNone(self.trip.actual_tons)
     def test_reassignment_revokes_old_driver_access(self):
@@ -1330,7 +1330,7 @@ class FleetTests(TestCase):
         response=self.client.get('/report/',{**filters,'format':'csv'})
         rows=list(csv.reader(StringIO(response.content.decode('utf-8-sig')),delimiter=';'))
         self.assertEqual(len(rows),2);self.assertEqual(rows[1][0],str(self.trip.pk))
-        self.assertEqual(rows[1][10],'24,10')
+        self.assertEqual(rows[1][10],'24,100')
         response=self.client.get('/report/',{'weight':'no','signed':'no','original':'no','kind':'grain'})
         self.assertEqual(response.context['count'],1);self.assertIsNone(response.context['totals']['tons'])
         self.assertContains(response,'Не внесена');self.assertContains(response,reverse('analytics'))

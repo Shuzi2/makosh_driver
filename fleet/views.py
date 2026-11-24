@@ -509,10 +509,10 @@ def trip_status(request,pk):
         if tons:
             try:
                 value=Decimal(tons.replace(",","."))
-                if not value.is_finite() or not Decimal("0.01")<=value<=60 or value.as_tuple().exponent < -2: raise ValueError()
+                if not value.is_finite() or not Decimal("0.01")<=value<=60 or value.as_tuple().exponent < -3: raise ValueError()
                 trip.actual_tons=value
             except Exception:
-                messages.error(request,"Вага має бути від 0,01 до 60 т, до двох знаків після коми."); return trip_response(request,pk)
+                messages.error(request,"Вага має бути від 0,01 до 60 т, до трьох знаків після коми."); return trip_response(request,pk)
         if request.user.role == 'driver' and target == 'completed' and not trip.has_signed_ttn:
             return render_finish(request,trip,request.POST,finish_form)
         if finish_form:
