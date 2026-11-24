@@ -38,16 +38,22 @@ class FleetCopyDataTests(TestCase):
         trailer=Trailer.objects.create(plate='TRAIL123',kind='tent')
         vehicle.trailer_plate=trailer.plate;vehicle.save()
         url=reverse('admin_copy_data')
-        values={'length_mm':'6000','width_mm':'2550','height_mm':'3850','empty_weight_kg':'8075','max_weight_kg':'19000'}
+        values={'brand':'SCANIA','model_name':'R450','vin':'TRACTOR123','length_mm':'6000','width_mm':'2550','height_mm':'3850','empty_weight_kg':'8075','max_weight_kg':'19000'}
         self.assertEqual(self.client.post(url,{'action':'tractor','vehicle_id':vehicle.pk,**{f'tractor-{vehicle.pk}-{k}':v for k,v in values.items()}}).status_code,302)
-        trailer_values={'length_mm':'10500','width_mm':'2500','height_mm':'3800','empty_weight_kg':'6600','max_weight_kg':'42000'}
+        trailer_values={'brand':'SCHMITZ','model_name':'S01','vin':'TRAILER456','length_mm':'10500','width_mm':'2500','height_mm':'3800','empty_weight_kg':'6600','max_weight_kg':'42000'}
         self.assertEqual(self.client.post(url,{'action':'trailer','trailer_id':trailer.pk,**{f'trailer-{trailer.pk}-{k}':v for k,v in trailer_values.items()}}).status_code,302)
         vehicle.refresh_from_db();trailer.refresh_from_db()
         self.assertEqual(vehicle.length_mm,6000);self.assertEqual(vehicle.empty_weight_kg,8075);self.assertEqual(vehicle.max_weight_kg,19000)
         self.assertEqual(trailer.length_mm,10500);self.assertEqual(trailer.empty_weight_kg,6600);self.assertEqual(trailer.max_weight_kg,42000)
+        self.assertEqual((vehicle.brand,vehicle.model_name,vehicle.vin),('SCANIA','R450','TRACTOR123'))
+        self.assertEqual((trailer.brand,trailer.model_name,trailer.vin),('SCHMITZ','S01','TRAILER456'))
         page=self.client.get(reverse('dashboard'))
         self.assertContains(page,'data-copy-tractor-length="6000"')
         self.assertContains(page,'data-copy-trailer-length="10500"')
+        self.assertContains(page,'data-copy-tractor-model="R450"')
+        self.assertContains(page,'data-copy-tractor-vin="TRACTOR123"')
+        self.assertContains(page,'data-copy-trailer-brand="SCHMITZ"')
+        self.assertContains(page,'data-copy-trailer-vin="TRAILER456"')
         invalid={**values,'empty_weight_kg':'19001'}
         response=self.client.post(url,{'action':'tractor','vehicle_id':vehicle.pk,**{f'tractor-{vehicle.pk}-{k}':v for k,v in invalid.items()}})
         self.assertEqual(response.status_code,200)

@@ -42,11 +42,13 @@ class TractorCopySpecificationsForm(CopySpecificationsForm):
     class Meta(CopySpecificationsForm.Meta):
         from .models import Vehicle
         model=Vehicle
+        fields=['brand','model_name','vin']+CopySpecificationsForm.Meta.fields
 
 class TrailerCopySpecificationsForm(CopySpecificationsForm):
     class Meta(CopySpecificationsForm.Meta):
         from .models import Trailer
         model=Trailer
+        fields=['brand','model_name','vin']+CopySpecificationsForm.Meta.fields
 
 
 @staff_required
@@ -83,7 +85,7 @@ def copy_data(request):
             spec_form=form_class(request.POST,instance=selected_spec,prefix=f'{spec_action}-{selected_spec.pk}')
             if spec_form.is_valid():
                 spec_form.save()
-                AuditEvent.objects.create(actor=request.user,action='Оновлено габарити для копіювання',detail=f'{spec_action}: {selected_spec.plate}')
+                AuditEvent.objects.create(actor=request.user,action='Оновлено дані авто для копіювання',detail=f'{spec_action}: {selected_spec.plate}')
                 messages.success(request,'Дані авто збережено.')
                 return redirect('admin_copy_data')
         else:

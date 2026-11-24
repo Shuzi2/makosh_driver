@@ -8,7 +8,8 @@
       const length=d[`copy${prefix}Length`],width=d[`copy${prefix}Width`],height=d[`copy${prefix}Height`],empty=d[`copy${prefix}EmptyWeight`],max=d[`copy${prefix}MaxWeight`];
       return [`Габарити ${label} (Д × Ш × В), мм: ${[length,width,height].map(v=>v||'—').join(' × ')}`,`Маса ${label} (без вантажу / максимальна), кг: ${empty||'—'} / ${max||'—'}`];
     };
-    return [`Перевізник: ${fleet.dataset.copyCarrier||'Не вказано'}`,`Марка: ${d.copyBrand||'Не вказано'}`,`Тягач: ${d.copyTractor||'Не вказано'}`,...specs('Tractor','тягача'),`Причіп: ${d.copyTrailer||'Не закріплено'}`,...(d.copyTrailer?specs('Trailer','причепа'):[]),`Тип: ${d.copyKind||'Не вказано'}`,`Водій: ${d.copyDriver||'Не закріплений'}`,`Телефон: ${d.copyPhone||'Не вказано'}`,`Посвідчення водія: ${d.copyLicense||'Не вказано'}`,`Паспорт: ${d.copyPassport||'Не вказано'}`,`Місце зберігання авто: ${fleet.dataset.copyStorage||'Не вказано'}`].join('\n');
+    const identity=(prefix,label)=>[`Марка і модель ${label}: ${[d[`copy${prefix}Brand`],d[`copy${prefix}Model`]].filter(Boolean).join(' ')||'Не вказано'}`,`VIN ${label}: ${d[`copy${prefix}Vin`]||'Не вказано'}`];
+    return [`Перевізник: ${fleet.dataset.copyCarrier||'Не вказано'}`,'',`Тягач: ${d.copyTractor||'Не вказано'}`,...identity('Tractor','тягача'),...specs('Tractor','тягача'),'',`Причіп: ${d.copyTrailer||'Не закріплено'}`,...(d.copyTrailer?[...identity('Trailer','причепа'),...specs('Trailer','причепа')]:[]),`Тип: ${d.copyKind||'Не вказано'}`,'',`Водій: ${d.copyDriver||'Не закріплений'}`,`Телефон: ${d.copyPhone||'Не вказано'}`,`Посвідчення водія: ${d.copyLicense||'Не вказано'}`,`Паспорт: ${d.copyPassport||'Не вказано'}`,'',`Місце зберігання авто: ${fleet.dataset.copyStorage||'Не вказано'}`].join('\n');
   };
   function manualCopy(text){
     const dialog=document.createElement('dialog');dialog.className='fleet-copy-dialog';dialog.setAttribute('aria-labelledby','fleet-copy-title');

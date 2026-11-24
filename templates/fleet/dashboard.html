@@ -4,5 +4,5 @@
 <div id="fleet-metrics">{% include "fleet/dashboard_metrics.html" %}</div>
 <p class="fleet-live-note" data-fleet-live-status role="status"></p>
 <div class="fleet-toolbar"><input class="search" id="fleet-search" type="search" aria-label="Пошук авто" placeholder="Номер авто, причіп, водій або маршрут"><p>{% if fleet_kind == 'tent' %}Пошук у тентах{% elif fleet_kind == 'grain' %}Пошук у зерновозах{% else %}Пошук у тентах і зерновозах{% endif %}</p></div>
-<div id="fleet-cards" data-copy-carrier="{{ copy_settings.carrier }}" data-copy-storage="{{ copy_settings.storage_address }}" data-fleet-live-url="{% url 'dashboard' %}?live=1{% if fleet_kind %}&amp;kind={{ fleet_kind }}{% endif %}">{% include "fleet/dashboard_cards.html" %}</div><div class="fleet-copy-feedback" data-copy-feedback role="status" aria-live="polite" hidden></div><script src="{% static 'fleet-copy-vehicle.js' %}" defer></script>
+<div id="fleet-cards" data-copy-carrier="{{ copy_settings.carrier }}" data-copy-storage="{{ copy_settings.storage_address }}" data-fleet-live-url="{% url 'dashboard' %}?live=1{% if fleet_kind %}&amp;kind={{ fleet_kind }}{% endif %}">{% include "fleet/dashboard_cards.html" %}</div><div class="fleet-copy-feedback" data-copy-feedback role="status" aria-live="polite" hidden></div><script src="{% static 'fleet-copy-vehicle.js' %}?v=2" defer></script>
 {% endblock %}

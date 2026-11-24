@@ -73,6 +73,8 @@ class FleetCopySettings(models.Model):
 
 
 class CopySpecifications(models.Model):
+    model_name = models.CharField('Модель', max_length=100, blank=True)
+    vin = models.CharField('VIN-код', max_length=40, blank=True)
     length_mm = models.PositiveIntegerField('Довжина, мм', null=True, blank=True, validators=[MinValueValidator(1), MaxValueValidator(99999)])
     width_mm = models.PositiveIntegerField('Ширина, мм', null=True, blank=True, validators=[MinValueValidator(1), MaxValueValidator(99999)])
     height_mm = models.PositiveIntegerField('Висота, мм', null=True, blank=True, validators=[MinValueValidator(1), MaxValueValidator(99999)])
@@ -83,6 +85,7 @@ class CopySpecifications(models.Model):
 
 class Trailer(CopySpecifications):
     plate = models.CharField('Номер причепа', max_length=20, unique=True)
+    brand = models.CharField('Марка', max_length=100, blank=True)
     kind = models.CharField('Тип причепа',max_length=12,choices=[('tent','Тент'),('grain','Зерновоз')])
     class Meta:
         ordering = ['plate']
