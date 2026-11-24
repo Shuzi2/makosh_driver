@@ -290,7 +290,7 @@ class DocumentForm(forms.ModelForm):
                     image = Image.open(BytesIO(data))
                     formats = {"JPEG":(".jpg",".jpeg"), "PNG":(".png",), "WEBP":(".webp",)}
                     image_format=image.format
-                    if image_format not in (*formats, 'HEIF', 'AVIF', 'GIF', 'BMP', 'TIFF'):
+                    if image_format not in (*formats, 'MPO', 'HEIF', 'AVIF', 'GIF', 'BMP', 'TIFF'):
                         raise ValueError("Unsupported image")
                     image.verify()
                     if image_format in formats:

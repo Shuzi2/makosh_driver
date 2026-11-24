@@ -10,6 +10,7 @@ from django.core.validators import MinValueValidator, MaxValueValidator
 from django.db import models
 from django.db.models import Q, F
 from django.utils import timezone
+from django.utils.functional import cached_property
 
 def normalize_phone(value):
     digits = re.sub(r"[^0-9]", "", str(value or ""))
@@ -553,6 +554,11 @@ class Document(models.Model):
     class Meta:
         ordering = ["-uploaded_at"]
         base_manager_name = 'all_objects'
+
+    @cached_property
+    def preview_content_type(self):
+        from .image_compat import is_mpo_document
+        return 'image/jpeg' if is_mpo_document(self) else self.content_type
 
 def expense_receipt_path(instance, filename):
     return f'expense-receipts/{instance.trip_id}/{uuid.uuid4().hex}.{filename.rsplit(".",1)[-1].lower()}'

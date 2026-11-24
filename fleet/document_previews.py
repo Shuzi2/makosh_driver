@@ -15,10 +15,15 @@ def own_document(request,pk):
 @require_GET
 def inline(request,pk):
     doc=own_document(request,pk)
-    if doc.content_type not in ['image/jpeg','image/png','image/webp','application/pdf']: raise Http404
-    try: handle=doc.file.open('rb')
-    except FileNotFoundError: raise Http404('Файл не знайдено.')
-    response=FileResponse(handle,as_attachment=False,filename=doc.original_name,content_type=doc.content_type)
+    preview_type=doc.preview_content_type
+    if preview_type not in ['image/jpeg','image/png','image/webp','application/pdf']: raise Http404
+    try:
+        if doc.content_type=='application/octet-stream':
+            from .image_compat import mpo_preview
+            handle=mpo_preview(doc)
+        else: handle=doc.file.open('rb')
+    except (OSError, ValueError): raise Http404('Не вдалося відкрити фото.')
+    response=FileResponse(handle,as_attachment=False,filename=doc.original_name,content_type=preview_type)
     response['Cache-Control']='private, no-store';response['X-Content-Type-Options']='nosniff'
     # Native PDF viewing may be framed only by this same application.
     response['Content-Security-Policy']="default-src 'none'; frame-ancestors 'self'; sandbox"
@@ -35,7 +40,7 @@ def preview(request,pk):
     for item in docs:
         place=item.stop.driver_place['name'] if item.stop_id else ''
         items.append({'id':item.pk,'title':item.get_kind_display(), 'number':item.ttn_number,'place':place,
-            'name':item.original_name,'type':item.content_type,'uploaded':item.uploaded_at.isoformat(),
+            'name':item.original_name,'type':item.preview_content_type,'uploaded':item.uploaded_at.isoformat(),
             'url':reverse('document_inline',args=[item.pk]),'download':reverse('document_download',args=[item.pk]),
             'preview':reverse('document_preview',args=[item.pk])})
     if request.GET.get('format')=='json':
