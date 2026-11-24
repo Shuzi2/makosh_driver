@@ -15,11 +15,16 @@ def promote_trip(pk):
             trip=Trip.objects.select_related('vehicle','driver','accepted_by').select_for_update(of=('self',)).filter(pk=pk,status='queued',vehicle_id=initial['vehicle_id']).first()
             if not trip: return False
             User.objects.select_for_update().get(pk=trip.driver_id)
-            # An accepted trip kept with the previous driver needs a deliberate
-            # dispatcher decision once the vehicle has been reassigned.
+            # A trip intentionally kept with a driver after their vehicle
+            # assignment ended still needs a dispatcher decision. A different
+            # driver explicitly assigned before completion is otherwise valid.
             assigned=trip.vehicle.default_driver_id
-            if assigned and assigned != trip.driver_id: return False
-            if not assigned and trip.vehicle.assignments.filter(driver_id=trip.driver_id,ended_at__isnull=False).exists(): return False
+            if assigned != trip.driver_id:
+                last_transfer=trip.transfers.filter(next_driver_id=trip.driver_id,to_vehicle_id=trip.vehicle_id).order_by('-moved_at','-pk').values_list('moved_at',flat=True).first()
+                since=max(trip.created_at,last_transfer) if last_transfer else trip.created_at
+                from .assignment_history import AUTO_COMPLETION_NOTE
+                ended=trip.vehicle.assignments.filter(driver_id=trip.driver_id,ended_at__isnull=False).exclude(ended_note__startswith=AUTO_COMPLETION_NOTE).filter(Q(ended_recorded_at__gte=since)|Q(ended_recorded_at__isnull=True,ended_at__gte=since))
+                if ended.exists(): return False
             if queue_block_reason(trip): return False
             trip.status='planned'
             if trip.route_enabled:

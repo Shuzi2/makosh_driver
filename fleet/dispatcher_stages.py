@@ -49,6 +49,7 @@ class DispatcherStageForm(forms.Form):
 
 def apply_stage(trip,form,actor):
     now=timezone.now();stage=form.cleaned_data['stage'];point=form.cleaned_data.get('point')
+    was_completed=trip.status=='completed'
     old_label=trip.operational_status_display
     if stage!='completed' and Trip.objects.filter(status__in=Trip.ACTIVE).exclude(pk=trip.pk).filter(
             Q(vehicle=trip.vehicle)|Q(driver=trip.driver)).exists():
@@ -78,6 +79,10 @@ def apply_stage(trip,form,actor):
     trip.queue_priority_at=None;trip.status_changed_at=now
     trip.save(update_fields=['status','accepted_at','accepted_by','completed_at','queue_priority_at','status_changed_at','updated_at'])
     if stage=='completed':
+        if not was_completed:
+            from .assignment_history import assign_driver_after_completion
+            assignment_ok=assign_driver_after_completion(trip,actor)
+        else: assignment_ok=True
         from .driver_reports import snapshot_completion_rates
         snapshot_completion_rates(trip)
     if trip.is_accepted or stage=='completed':
@@ -87,6 +92,7 @@ def apply_stage(trip,form,actor):
     summary=f'{old_label} → {trip.operational_status_display}'+(f' · Точка {point.position}: {point.address}' if point else '')
     audit(actor,trip,'Логіст змінив етап рейсу',summary)
     if trip.is_active: notify_route(trip,'Логіст змінив етап рейсу: '+summary)
+    return assignment_ok if stage=='completed' else True
 
 
 @require_POST
@@ -100,8 +106,9 @@ def change_stage(request,pk):
             if not form.is_valid():
                 messages.error(request,' '.join(str(e) for errors in form.errors.values() for e in errors))
             else:
-                apply_stage(trip,form,request.user)
+                assignment_ok=apply_stage(trip,form,request.user)
                 messages.success(request,'Етап змінено логістом. Водій побачить оновлення, зміна збережена в історії.')
+                if not assignment_ok: messages.warning(request,'Рейс завершено, але не вдалося оновити закріплення водія. Перевірте авто й водія.')
     except (forms.ValidationError,IntegrityError) as exc:
         messages.error(request,exc.messages[0] if isinstance(exc,forms.ValidationError) else 'Водій або авто вже отримали інший рейс. Оновіть сторінку.')
     return redirect('trip_detail',pk=pk)

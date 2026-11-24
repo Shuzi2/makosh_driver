@@ -24,7 +24,7 @@ def issue_snapshot(queryset=None):
         document_checks=[{'stop':p,'complete':p.ttn_complete,'missing_numbers':p.missing_ttn_numbers,'label':p.get_kind_display(),'document_label':'ТТН' if p.kind=='load' else 'Підписана ТТН'} for p in points if p.state!='cancelled']
         keys=[]
         if trip.status=='cancelled' and trip.cancellation_notice_required and not trip.cancellation_acknowledged_at: keys.append('cancellation')
-        if trip.status in ['planned','queued'] and not trip.is_accepted: keys.append('acceptance')
+        if trip.status=='planned' and not trip.is_accepted: keys.append('acceptance')
         missing_report=[]
         if trip.status=='completed':
             from .driver_reports import economics_initial
@@ -59,7 +59,7 @@ def issue_snapshot(queryset=None):
 
 CATEGORIES=[
     ('cancellation','Не підтверджено скасування','Водій ще не натиснув «Зрозуміло».','Переглянути'),
-    ('acceptance','Рейси ще не прийняті','Поточні та наступні завдання без підтвердження водія.','Відкрити рейс'),
+    ('acceptance','Рейси ще не прийняті','Поточні рейси без підтвердження водія.','Відкрити рейс'),
     ('documents','Немає підписаної ТТН','Завершені рейси, для яких очікуємо документ.','Додати ТТН'),
     ('report','Не заповнено звіт рейсу','Завершені рейси з неповними даними для розрахунку.','Заповнити звіт'),
 ]
@@ -87,7 +87,7 @@ def conditions():
     missing_default=Q(report_defaults_exist=False)|Q(report_defaults_missing=True)|(kind_tent & Q(report_tent_missing=True))|(kind_grain & Q(report_grain_missing=True))|(~kind_tent & ~kind_grain)
     return {
         'cancellation':Q(status='cancelled',cancellation_notice_required=True,cancellation_acknowledged_at__isnull=True),
-        'acceptance':Q(status__in=['planned','queued']) & (Q(accepted_at__isnull=True)|~Q(accepted_by_id=F('driver_id'))),
+        'acceptance':Q(status='planned') & (Q(accepted_at__isnull=True)|~Q(accepted_by_id=F('driver_id'))),
         'documents':Q(status='completed') & (Q(route_enabled=False,attention_signed=False)|Q(route_enabled=True,attention_stop_documents=True)),
         'report':Q(status='completed') & (Q(distance_km__isnull=True)|Q(fuel_used_l__isnull=True)|(Q(economics__isnull=False)&missing_saved)|(Q(economics__isnull=True)&missing_default)),
     }

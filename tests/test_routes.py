@@ -79,6 +79,29 @@ class RouteTests(TestCase):
         self.client.force_login(self.admin)
         self.assertContains(self.client.get(reverse('trip_detail',args=[trip.pk])),'24,255')
 
+    def test_driver_route_completion_updates_vehicle_assignment(self):
+        trip=self.final_trip()
+        self.vehicle.default_driver=self.other;self.vehicle.save(update_fields=['default_driver'])
+        for point in trip.stops.all(): self.upload(trip,point,kind='ttn' if point.kind=='load' else 'signed_ttn')
+        result=self.client.post(reverse('driver_action',args=[trip.pk]),self.payload(trip,empty_distance_km='0',loaded_distance_km='420',fuel_used_l='135',actual_tons='23.755')).json()
+        self.assertEqual(result['outcome'],'confirmed')
+        self.vehicle.refresh_from_db();trip.refresh_from_db()
+        self.assertEqual(self.vehicle.default_driver_id,self.driver.pk)
+        self.assertEqual(trip.completed_driver_name,self.driver.full_name)
+
+    def test_assignment_failure_does_not_partially_transfer_or_lose_completed_trip(self):
+        from django.core.exceptions import ValidationError
+        trip=self.final_trip()
+        self.vehicle.default_driver=self.other;self.vehicle.save(update_fields=['default_driver'])
+        for point in trip.stops.all(): self.upload(trip,point,kind='ttn' if point.kind=='load' else 'signed_ttn')
+        with patch('fleet.assignment_history.record_assignment',side_effect=ValidationError('conflict')):
+            result=self.client.post(reverse('driver_action',args=[trip.pk]),self.payload(trip,empty_distance_km='0',loaded_distance_km='420',fuel_used_l='135',actual_tons='23.755')).json()
+        self.assertEqual(result['outcome'],'confirmed')
+        self.vehicle.refresh_from_db();trip.refresh_from_db()
+        self.assertEqual(trip.status,'completed')
+        self.assertEqual(self.vehicle.default_driver_id,self.other.pk)
+        self.assertTrue(AuditEvent.objects.filter(trip=trip,action='Не вдалося автоматично закріпити водія').exists())
+
     def test_completion_requires_documents_and_records_unloading_weight(self):
         trip=self.final_trip(); url=reverse('driver_action',args=[trip.pk])
         unload=trip.stops.last()

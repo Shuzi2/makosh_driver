@@ -201,12 +201,14 @@ class WorkspaceFeaturesTests(TestCase):
         queued=self.trip(status='queued')
         response=self.client.get(reverse('dashboard'))
         self.assertContains(response,'class="queue-item is-pending"')
+        self.assertContains(response,'Вантаж: Добрива')
         self.assertContains(response,'Очікує прийняття')
         queued.accepted_at=timezone.now();queued.accepted_by=self.driver;queued.save()
         response=self.client.get(reverse('dashboard'))
         self.assertContains(response,'class="queue-item is-accepted"')
         self.assertContains(response,'Прийнято')
         self.assertIn('class="queue-item is-accepted"',self.client.get(reverse('dashboard'),{'live':'1'}).json()['cards'])
+        self.assertIn('Вантаж: Добрива',self.client.get(reverse('dashboard'),{'live':'1'}).json()['cards'])
 
     def test_free_queued_trip_becomes_current_before_acceptance(self):
         from fleet.queue_promotion import promote_ready
@@ -252,6 +254,54 @@ class WorkspaceFeaturesTests(TestCase):
         self.assertEqual(future.status,'planned');self.assertFalse(future.is_accepted)
         self.client.force_login(self.driver)
         self.assertContains(self.client.get(reverse('trip_detail',args=[future.pk])),reverse('trip_accept',args=[future.pk]))
+
+    def test_next_trip_for_another_driver_becomes_available_when_vehicle_is_free(self):
+        other_vehicle=Vehicle.objects.create(plate='PREV1',trailer_plate='PREVT1',kind='tent',default_driver=self.other)
+        current=self.trip(status='unloading',accepted_at=timezone.now(),accepted_by=self.driver)
+        future=Trip.objects.create(vehicle=self.vehicle,driver=self.other,origin='А',destination='Б',cargo='Зерно',planned_tons=20,planned_date=timezone.localdate(),status='queued',created_by=self.admin)
+        self.client.force_login(self.other)
+        self.assertContains(self.client.get(reverse('trip_detail',args=[future.pk])),'Прийняти його можна, коли він стане поточним')
+        self.client.post(reverse('trip_accept',args=[future.pk]),{'acceptance_location':'м. Вінниця','acceptance_odometer_km':'150000'})
+        future.refresh_from_db();self.assertIsNone(future.accepted_at)
+        self.client.force_login(self.admin)
+        with self.captureOnCommitCallbacks(execute=True):
+            self.client.post(reverse('trip_status',args=[current.pk]),{'status':'completed'})
+        future.refresh_from_db();self.assertEqual(future.status,'planned');self.assertFalse(future.is_accepted)
+        self.assertEqual(future.vehicle_id,self.vehicle.pk);self.assertEqual(future.driver_id,self.other.pk)
+        self.client.force_login(self.other)
+        self.assertContains(self.client.get(reverse('trip_detail',args=[future.pk])),reverse('trip_accept',args=[future.pk]))
+        self.client.post(reverse('trip_accept',args=[future.pk]),{'acceptance_location':'м. Вінниця','acceptance_odometer_km':'150000'})
+        future.refresh_from_db();self.assertTrue(future.is_accepted)
+        later=self.trip(status='queued')
+        self.client.force_login(self.admin)
+        with self.captureOnCommitCallbacks(execute=True):
+            self.client.post(reverse('trip_status',args=[future.pk]),{'status':'completed'})
+        self.vehicle.refresh_from_db();other_vehicle.refresh_from_db();future.refresh_from_db()
+        self.assertEqual(self.vehicle.default_driver_id,self.other.pk)
+        self.assertIsNone(other_vehicle.default_driver_id)
+        self.assertEqual(future.completed_driver_name,self.other.full_name)
+        self.assertTrue(self.vehicle.assignments.filter(driver=self.other,ended_at__isnull=True).exists())
+        self.assertTrue(other_vehicle.assignments.filter(driver=self.other,ended_at__isnull=False).exists())
+        later.refresh_from_db();self.assertEqual(later.status,'planned')
+
+    def test_next_other_driver_waits_until_driver_is_free(self):
+        from fleet.queue_promotion import promote_after_completion
+        second_vehicle=Vehicle.objects.create(plate='BUSY1',trailer_plate='BUSYT1',kind='tent')
+        busy=Trip.objects.create(vehicle=second_vehicle,driver=self.other,origin='А',destination='Б',cargo='Зерно',planned_tons=20,planned_date=timezone.localdate(),status='planned',created_by=self.admin)
+        future=Trip.objects.create(vehicle=self.vehicle,driver=self.other,origin='А',destination='Б',cargo='Зерно',planned_tons=20,planned_date=timezone.localdate(),status='queued',created_by=self.admin)
+        promote_after_completion(self.vehicle.pk,self.driver.pk)
+        future.refresh_from_db();self.assertEqual(future.status,'queued')
+        busy.status='completed';busy.completed_at=timezone.now();busy.save()
+        promote_after_completion(second_vehicle.pk,self.other.pk)
+        future.refresh_from_db();self.assertEqual(future.status,'planned')
+
+    def test_earlier_assignment_does_not_block_new_trip_for_former_driver(self):
+        from fleet.models import VehicleAssignment
+        from fleet.queue_promotion import promote_ready
+        VehicleAssignment.objects.create(vehicle=self.vehicle,driver=self.other,driver_name=self.other.full_name,tractor_plate=self.vehicle.plate,ended_at=timezone.now()-timedelta(days=2),ended_recorded_at=timezone.now()-timedelta(days=2))
+        future=Trip.objects.create(vehicle=self.vehicle,driver=self.other,origin='А',destination='Б',cargo='Зерно',planned_tons=20,planned_date=timezone.localdate(),status='queued',created_by=self.admin)
+        promote_ready();future.refresh_from_db()
+        self.assertEqual(future.status,'planned')
 
     def test_driver_can_check_ready_queued_trip_but_cannot_bypass_blockers(self):
         current=self.trip(status='planned',accepted_at=timezone.now(),accepted_by=self.driver)

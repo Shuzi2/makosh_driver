@@ -177,6 +177,20 @@ class FleetTests(TestCase):
         self.assertEqual(self.client.get('/attention/').context['affected_count'],0)
         self.login_as(self.driver);self.assertEqual(self.client.get('/attention/').status_code,403)
         self.assertEqual(self.client.get('/?live=1').status_code,403)
+    def test_queued_trip_needs_no_acceptance_attention_until_it_is_current(self):
+        from fleet.attention import filter_attention, issue_snapshot, dashboard_attention
+        self.trip2.status='road';self.trip2.save()
+        self.trip.accepted_at=timezone.now();self.trip.accepted_by=self.driver;self.trip.save()
+        queued=self.queue_trip()
+        self.assertFalse(filter_attention(Trip.objects.filter(pk=queued.pk),'acceptance').exists())
+        self.assertFalse(any(issue['key']=='acceptance' for issue in issue_snapshot(Trip.objects.filter(pk=queued.pk))))
+        self.login_as(self.logistic)
+        self.assertEqual(self.client.get('/attention/').context['affected_count'],0)
+        self.assertEqual(dashboard_attention(Trip.objects.filter(pk=queued.pk))['attention_total'],0)
+        self.trip.status='completed';self.trip.completed_at=timezone.now();self.trip.save()
+        queued.status='planned';queued.save(update_fields=['status'])
+        self.assertTrue(filter_attention(Trip.objects.filter(pk=queued.pk),'acceptance').exists())
+        self.assertTrue(any(issue['key']=='acceptance' for issue in issue_snapshot(Trip.objects.filter(pk=queued.pk))))
     def test_attention_previews_are_bounded_and_all_matching_trips_are_paginated(self):
         self.finish();self.finish(self.trip2)
         Trip.objects.bulk_create([Trip(vehicle=self.vehicle,driver=self.driver,origin='A',destination='B',cargo='X',planned_tons=20,planned_date=timezone.localdate(),status='completed',completed_at=timezone.now(),created_by=self.logistic) for _ in range(51)])
@@ -261,7 +275,7 @@ class FleetTests(TestCase):
         from fleet.models import TripTransfer
         for status in ['planned','queued','loading','road','unloading','completed','cancelled']:
             self.trip.status=status;self.trip.save()
-            self.assertEqual(filter_attention(Trip.objects.filter(pk=self.trip.pk),'acceptance').exists(),self.trip.requires_acceptance)
+            self.assertEqual(filter_attention(Trip.objects.filter(pk=self.trip.pk),'acceptance').exists(),status=='planned' and self.trip.requires_acceptance)
         self.trip.status='road';self.trip.save()
         TripTransfer.objects.create(trip=self.trip,kind='substitution',previous_driver=self.other,next_driver=self.driver,from_vehicle=self.vehicle,to_vehicle=self.vehicle,previous_status='road',next_status='road',moved_by=self.logistic)
         self.assertFalse(filter_attention(Trip.objects.filter(pk=self.trip.pk),'acceptance').exists())

@@ -85,6 +85,9 @@ def stop_action(request,pk):
             messages.error(request,'Цю дію вже виконано або вона недоступна.');return trip_response(request,pk)
         trip.status_changed_at=timezone.now();trip.save(update_fields=['status','completed_at','status_changed_at','updated_at'])
         if trip.status=='completed':
+            from .assignment_history import assign_driver_after_completion
+            if not assign_driver_after_completion(trip,request.user):
+                messages.warning(request,'Рейс завершено, але не вдалося оновити закріплення водія. Повідомте логіста.')
             from .driver_reports import snapshot_completion_rates
             snapshot_completion_rates(trip)
             from .queue_promotion import promote_after_completion

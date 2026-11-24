@@ -534,6 +534,9 @@ def trip_status(request,pk):
             from .push import enqueue
             enqueue(trip.driver_id,'cancelled',trip)
         if target=='completed':
+            from .assignment_history import assign_driver_after_completion
+            if not assign_driver_after_completion(trip,request.user):
+                messages.warning(request,'Рейс завершено, але не вдалося оновити закріплення водія. Повідомте логіста.')
             from .driver_reports import snapshot_completion_rates
             snapshot_completion_rates(trip)
             from .queue_promotion import promote_after_completion

@@ -1,7 +1,39 @@
 """Assignment periods are separate from trip ownership and document access."""
 from django.core.exceptions import ValidationError
+from django.db import IntegrityError, transaction
 from django.utils import timezone
 from .models import VehicleAssignment
+
+AUTO_COMPLETION_NOTE = 'Автоматично після завершення рейсу'
+
+def assign_driver_after_completion(trip, actor):
+    """Keep the latest trip driver assigned; preserve both vehicles' history."""
+    from .models import AuditEvent, User, Vehicle
+    try:
+        with transaction.atomic():
+            User.objects.select_for_update().get(pk=trip.driver_id)
+            source_id=Vehicle.objects.filter(default_driver_id=trip.driver_id).exclude(pk=trip.vehicle_id).values_list('pk',flat=True).first()
+            ids=sorted({trip.vehicle_id} | ({source_id} if source_id else set()))
+            vehicles={vehicle.pk:vehicle for vehicle in Vehicle.objects.select_for_update().filter(pk__in=ids).order_by('pk')}
+            target=vehicles[trip.vehicle_id]
+            source=vehicles.get(source_id)
+            if source and source.default_driver_id!=trip.driver_id:
+                raise ValidationError('Закріплення водія змінилося одночасно. Потрібна перевірка логіста.')
+            now=timezone.now()
+            note=f'{AUTO_COMPLETION_NOTE} №{trip.pk}'
+            if source:
+                source.default_driver=None;source.save(update_fields=['default_driver'])
+                record_assignment(source,trip.driver_id,now,actor,note)
+                AuditEvent.objects.create(actor=actor,trip=trip,action='Автоматично змінено закріплення',detail=f'{source.plate}: водія переведено на {target.plate} після рейсу №{trip.pk}.')
+            previous=target.default_driver_id
+            if previous!=trip.driver_id:
+                target.default_driver_id=trip.driver_id;target.save(update_fields=['default_driver'])
+                record_assignment(target,previous,now,actor,note)
+                AuditEvent.objects.create(actor=actor,trip=trip,action='Автоматично змінено закріплення',detail=f'{target.plate}: закріплено водія {trip.driver.full_name} після рейсу №{trip.pk}.')
+            return True
+    except (ValidationError, IntegrityError):
+        AuditEvent.objects.create(actor=actor,trip=trip,action='Не вдалося автоматично закріпити водія',detail='Рейс завершено. Логісту потрібно перевірити закріплення авто та водія.')
+        return False
 
 
 def record_assignment(vehicle, previous_driver_id, effective_at, actor=None, note=''):
