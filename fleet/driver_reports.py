@@ -309,7 +309,7 @@ class PeriodForm(forms.Form):
 
 def report_context(driver=None,label=None,period=None,query=''):
     historical=DriverReportHistory.objects.filter(driver=driver) if driver else DriverReportHistory.objects.filter(driver__isnull=True,driver_label=label)
-    trips=Trip.objects.filter(status='completed',driver=driver).select_related('vehicle','driver','economics').prefetch_related('expenses').order_by('-completed_at','-pk') if driver else Trip.objects.none()
+    trips=Trip.objects.filter(status='completed',driver=driver).select_related('vehicle','driver','economics').prefetch_related('expenses','stops').order_by('-completed_at','-pk') if driver else Trip.objects.none()
     historical=[row for row in historical if in_report_period(row,'archive',period)]
     trips=[trip for trip in trips if in_report_period(trip,'live',period)]
     defaults=DriverEconomicsDefaults.objects.filter(pk=1).first() or DriverEconomicsDefaults()
@@ -355,13 +355,21 @@ def report_context(driver=None,label=None,period=None,query=''):
         trip.report_kilometers=report_kilometers(trip,trip.report_economics)
         trip.report_km_manual=(trip.report_economics.report_overrides or {}).get('manual_v2',{}).get('kilometers','') if trip.report_economics else ''
         trip.report_manual=(trip.report_economics.report_overrides or {}).get('manual_v2',{}) if trip.report_economics else {}
+        points=[point for point in trip.stops.all() if point.state!='cancelled'] if trip.route_enabled else []
+        loading='; '.join(point.address for point in points if point.kind=='load') or trip.origin
+        unloading='; '.join(point.address for point in points if point.kind=='unload') or trip.destination
+        route_points=[point.address for point in points] if points else [trip.origin,trip.destination]
+        start=(trip.acceptance_location or '').strip()
+        if start and (not route_points or start.casefold()!=route_points[0].strip().casefold()):
+            route_points.insert(0,start)
+        route=' → '.join(route_points)
         trip.report_fields={
             'report_number':trip.report_manual.get('report_number',f'№{trip.pk}'),
             'date':report_date(trip,'live').strftime('%d.%m.%Y') if report_date(trip,'live') else '',
             'empty_route':trip.report_manual.get('empty_route',f'{trip.acceptance_location} → {trip.origin}' if trip.acceptance_location else ''),
-            'loading':trip.report_manual.get('loading',trip.origin),
-            'unloading':trip.report_manual.get('unloading',trip.destination),
-            'route':trip.report_manual.get('route',f'{trip.origin} → {trip.destination}'),
+            'loading':trip.report_manual.get('loading',loading),
+            'unloading':trip.report_manual.get('unloading',unloading),
+            'route':trip.report_manual.get('route',route),
         }
         import copy
         base_economics=copy.copy(trip.report_economics) if trip.report_economics else None
@@ -371,7 +379,7 @@ def report_context(driver=None,label=None,period=None,query=''):
         original_values=base_finances | {'kilometers':trip.distance_km,'fuel_litres':trip.fuel_used_l,'report_number':f'№{trip.pk}',
             'date':trip.completed_at.strftime('%d.%m.%Y') if trip.completed_at else '',
             'empty_route':f'{trip.acceptance_location} → {trip.origin}' if trip.acceptance_location else '',
-            'loading':trip.origin,'unloading':trip.destination,'route':f'{trip.origin} → {trip.destination}'}
+            'loading':loading,'unloading':unloading,'route':route}
         trip.correction_list=[{'label':REPORT_LABELS.get(key,key),'original':original_values.get(key),'current':value} for key,value in trip.report_manual.items()]
         for cell in trip.result_cells:
             cell['manual']=(trip.report_economics.report_overrides or {}).get('manual_v2',{}).get(cell['key'],'') if trip.report_economics else ''

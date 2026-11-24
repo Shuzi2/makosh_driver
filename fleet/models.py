@@ -386,8 +386,9 @@ class Trip(models.Model):
     def route_balance(self):
         points=[s for s in self.stops.all() if s.state=='completed']
         from decimal import Decimal
-        balance=sum((s.actual_tons if s.actual_tons is not None else s.planned_tons)*(1 if s.kind=='load' else -1) for s in points) if points else Decimal('0')
-        return {'tons':balance,'estimated':any(s.actual_tons is None for s in points)}
+        missing=any(s.actual_tons is None for s in points)
+        balance=None if missing else sum((s.actual_tons*(1 if s.kind=='load' else -1) for s in points), Decimal('0'))
+        return {'tons':balance,'estimated':False}
     @property
     def loading_directions_url(self):
         from .locations import directions_url

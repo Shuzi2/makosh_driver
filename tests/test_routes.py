@@ -46,6 +46,39 @@ class RouteTests(TestCase):
         self.client.force_login(self.admin)
         self.assertContains(self.client.get(reverse('report')),'24,255')
 
+    def test_remaining_cargo_uses_actual_weights_and_never_the_plan(self):
+        trip=self.create([{'kind':'load','address':'Вінниця','cargo':'Кукурудза','planned_tons':25},{'kind':'unload','address':'Гайсин','cargo':'Кукурудза','planned_tons':25}])
+        load, unload = list(trip.stops.all())
+        load.state='completed'; load.actual_tons=None; load.save(update_fields=['state','actual_tons'])
+        self.assertIsNone(trip.route_balance['tons'])
+        load.actual_tons=Decimal('24.255'); load.save(update_fields=['actual_tons'])
+        self.assertEqual(trip.route_balance['tons'],Decimal('24.255'))
+        unload.state='completed'; unload.actual_tons=Decimal('24.255'); unload.save(update_fields=['state','actual_tons'])
+        self.assertEqual(trip.route_balance['tons'],Decimal('0'))
+        unload.actual_tons=None; unload.save(update_fields=['actual_tons'])
+        self.assertIsNone(trip.route_balance['tons'])
+        response=self.client.get(reverse('trip_detail',args=[trip.pk]))
+        self.assertContains(response,'Недостатньо фактичних даних')
+        self.assertNotContains(response,'Залишок в авто · за планом')
+
+    def test_driver_enters_actual_loading_weight_before_departure(self):
+        trip=self.create([{'kind':'load','address':'Вінниця','cargo':'Кукурудза','planned_tons':25},{'kind':'unload','address':'Гайсин','cargo':'Кукурудза','planned_tons':25}])
+        self.accept(trip); self.act(trip,'arrive')
+        page=self.client.get(reverse('trip_detail',args=[trip.pk]))
+        self.assertContains(page,'Фактично завантажено, т')
+        result=self.act(trip,'depart',actual_tons='').json()
+        self.assertEqual(result['outcome'],'rejected')
+        self.assertIn('вагу',result['message'])
+        trip.refresh_from_db(); self.assertEqual(trip.current_stop.state,'arrived')
+        result=self.act(trip,'depart',actual_tons='24.255').json()
+        self.assertEqual(result['outcome'],'confirmed')
+        trip.refresh_from_db(); load=trip.stops.first()
+        self.assertEqual(load.actual_tons,Decimal('24.255'))
+        self.assertEqual(trip.planned_tons,Decimal('25'))
+        self.assertEqual(trip.route_balance['tons'],Decimal('24.255'))
+        self.client.force_login(self.admin)
+        self.assertContains(self.client.get(reverse('trip_detail',args=[trip.pk])),'24,255')
+
     def test_completion_requires_documents_and_records_unloading_weight(self):
         trip=self.final_trip(); url=reverse('driver_action',args=[trip.pk])
         unload=trip.stops.last()
@@ -257,6 +290,7 @@ class RouteTests(TestCase):
         data=self.data(points,trip);data.pop('scheduling');return data
     def act(self,trip,mode,stop=None,**extra):
         trip.refresh_from_db();stop=stop or trip.current_stop
+        if mode=='depart' and stop and stop.kind=='load': extra.setdefault('actual_tons',str(stop.planned_tons))
         if mode=='depart' and stop and trip.stops.filter(state__in=['pending','arrived']).count()==1:
             extra={'empty_distance_km':'0','loaded_distance_km':'420','fuel_used_l':'135',**extra}
             unloads=list(trip.stops.filter(kind='unload').exclude(state='cancelled'))
@@ -496,7 +530,7 @@ class RouteTests(TestCase):
             self.assertContains(response,f'href="tel:{point["contact_phone"]}"')
         self.assertContains(response,'Точки маршруту')
         self.assertContains(response,'Виконано 0 з 4')
-        self.assertNotContains(response,'name="actual_tons"')
+        self.assertContains(response,'name="actual_tons"')
         self.assertNotContains(response,'<details class="driver-whole-route"')
         self.act(trip,'depart')
         response=self.client.get('/')
@@ -504,11 +538,11 @@ class RouteTests(TestCase):
         self.assertEqual(response.context['next_stop'].address,'Черкаси')
         self.assertContains(response,'Виконано 1 з 4')
 
-    def test_driver_two_point_trip_has_no_weight_input(self):
+    def test_driver_two_point_trip_has_loading_weight_input(self):
         trip=self.create([{'kind':'load','address':'Вінниця','cargo':'Добрива','planned_tons':'24'},{'kind':'unload','address':'Київ','cargo':'Добрива','planned_tons':'24'}])
         self.accept(trip)
         self.act(trip,'arrive')
-        self.assertNotContains(self.client.get('/'),'name="actual_tons"')
+        self.assertContains(self.client.get('/'),'name="actual_tons"')
 
     def test_driver_can_search_navigation_for_address_without_coordinates(self):
         trip=self.create([{'kind':'load','address':'Вінниця','cargo':'Добрива','planned_tons':'24'},{'kind':'unload','address':'Київ','cargo':'Добрива','planned_tons':'24'}])

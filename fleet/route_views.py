@@ -43,6 +43,8 @@ def stop_action(request,pk):
                 finish_form=DriverFinishForm(request.POST,trip=trip)
                 if not finish_form.is_valid(): return render_finish(request,trip,request.POST,finish_form)
             value=request.POST.get('actual_tons','').strip()
+            if request.user.role=='driver' and stop.kind=='load' and not value and stop.actual_tons is None:
+                messages.error(request,'Вкажіть фактичну вагу завантаження перед виїздом.');return trip_response(request,pk)
             if value:
                 from decimal import Decimal,InvalidOperation
                 try:

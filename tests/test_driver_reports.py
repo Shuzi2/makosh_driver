@@ -1,7 +1,7 @@
 from decimal import Decimal
 from django.test import TestCase, override_settings
 from django.urls import reverse
-from fleet.models import User, DriverReportHistory, TripEconomics,DriverEconomicsDefaults,Trip,Vehicle,TripExpense
+from fleet.models import User, DriverReportHistory, TripEconomics,DriverEconomicsDefaults,Trip,TripStop,Vehicle,TripExpense
 from fleet.driver_reports import finances, report_insights, economics_initial
 from fleet.management.commands.import_driver_reports import parse_sheet
 from django.utils import timezone
@@ -18,6 +18,41 @@ class DriverReportsTests(TestCase):
     def setUp(self):
         self.admin=User.objects.create_user('+380501234501',role='admin',full_name='Логіст',must_change_password=False)
         self.driver=User.objects.create_user('+380501234502',role='driver',full_name='Тестовий Водій',must_change_password=False)
+
+    def test_driver_report_includes_all_active_route_points_in_table_search_and_excel(self):
+        from fleet.driver_report_export import live_row
+        vehicle=Vehicle.objects.create(plate='ROUTE123',kind='tent')
+        trip=Trip.objects.create(vehicle=vehicle,driver=self.driver,created_by=self.admin,origin='Перша',destination='Остання',cargo='Зерно',planned_tons=25,planned_date=timezone.localdate(),status='completed',completed_at=timezone.now(),route_enabled=True)
+        for position,kind,address,state in [(1,'load','Перша','completed'),(2,'load','Друга','completed'),(3,'unload','Третя','completed'),(4,'unload','Скасована','cancelled'),(5,'unload','Остання','completed')]:
+            TripStop.objects.create(trip=trip,position=position,kind=kind,address=address,cargo='Зерно',planned_tons=10,state=state)
+        self.client.force_login(self.admin)
+        url=reverse('driver_report_detail',args=[self.driver.pk])
+        page=self.client.get(url,{'q':'Друга'})
+        row=page.context['trips'][0]
+        self.assertEqual(row.report_fields['loading'],'Перша; Друга')
+        self.assertEqual(row.report_fields['unloading'],'Третя; Остання')
+        self.assertEqual(row.report_fields['route'],'Перша → Друга → Третя → Остання')
+        self.assertNotIn('Скасована',row.report_fields['route'])
+        values=live_row(row)
+        self.assertEqual(values[15:18],['Перша; Друга','Третя; Остання','Перша → Друга → Третя → Остання'])
+        self.assertContains(page,'Друга')
+        export=self.client.get(reverse('driver_report_export',args=[self.driver.pk]),{'q':'Третя'})
+        from io import BytesIO
+        from zipfile import ZipFile
+        with ZipFile(BytesIO(export.content)) as book:
+            sheet=book.read('xl/worksheets/sheet1.xml').decode()
+        self.assertIn('Перша → Друга → Третя → Остання',sheet)
+        trip.acceptance_location='Стоянка';trip.save(update_fields=['acceptance_location'])
+        with_start=self.client.get(url,{'q':'Стоянка'}).context['trips'][0]
+        self.assertEqual(with_start.report_fields['route'],'Стоянка → Перша → Друга → Третя → Остання')
+        self.assertEqual(live_row(with_start)[17],'Стоянка → Перша → Друга → Третя → Остання')
+        trip.acceptance_location='Перша';trip.save(update_fields=['acceptance_location'])
+        self.assertEqual(self.client.get(url).context['trips'][0].report_fields['route'],'Перша → Друга → Третя → Остання')
+        TripEconomics.objects.create(trip=trip,report_overrides={'manual_v2':{'loading':'Ручне виправлення'}})
+        corrected=self.client.get(url).context['trips'][0]
+        self.assertEqual(corrected.report_fields['loading'],'Ручне виправлення')
+        self.assertEqual(corrected.report_fields['route'],'Перша → Друга → Третя → Остання')
+        self.assertEqual(next(change for change in corrected.correction_list if change['label']=='Точка завантаження')['original'],'Перша; Друга')
 
     def test_archive_summary_and_insights_are_collapsed_by_default(self):
         self.client.force_login(self.admin)

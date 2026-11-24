@@ -97,6 +97,8 @@ def driver_action(request, pk):
                 result={'outcome':'rejected','message':'Укажіть показник спідометра цілим числом від 0 до 9 999 999 км.','redirect':reverse('dashboard')}
             elif not revision or revision!=trip.updated_at:
                 result={'outcome':'rejected','message':'Логіст або інша вкладка вже змінили рейс. Оновіть дані перед наступною дією.','redirect':reverse('dashboard')}
+            elif action=='stop' and payload['stop_mode']=='depart' and trip.current_stop and str(trip.current_stop.pk)==payload['stop_id'] and trip.current_stop.kind=='load' and not payload['actual_tons'].strip() and trip.current_stop.actual_tons is None:
+                result={'outcome':'rejected','message':'Вкажіть фактичну вагу завантаження перед виїздом.','redirect':reverse('trip_detail',args=[pk])}
             else:
                 previous_status=trip.status
                 previous_revision=trip.updated_at

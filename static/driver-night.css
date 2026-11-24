@@ -69,3 +69,4 @@ html[data-driver-theme="dark"] .fleet-workspace.driver-mode :is(.docs-file-row,.
 html[data-driver-theme="dark"] .fleet-workspace.driver-mode :is(.docs-file-check,.docs-file-remove button){background:#34463b;border-color:#607d69;color:#dcf3df}
 html[data-driver-theme="dark"] .fleet-workspace.driver-mode :is(.driver-photo-button,.driver-file-button){background:#35443c;border-color:#67806e;color:#eef7f0}
 html[data-driver-theme="dark"] .fleet-workspace.driver-mode .driver-finish-card .helptext{color:#c6d4da}
+html[data-driver-theme="dark"] .driver-mode .driver-loading-weight label{color:#f1f4f6}
