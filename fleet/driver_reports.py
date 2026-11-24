@@ -17,6 +17,12 @@ def report_kilometers(trip,inputs):
     manual=((inputs.report_overrides or {}).get('manual_v2',{}) if inputs else {})
     return Decimal(str(manual['kilometers'])) if 'kilometers' in manual else (Decimal(trip.distance_km) if trip.distance_km is not None else None)
 
+def loading_arrival_date(trip):
+    if not trip.route_enabled:
+        return None
+    first = next((stop for stop in trip.stops.all() if stop.kind == 'load' and stop.state != 'cancelled'), None)
+    return timezone.localtime(first.arrived_at).date() if first and first.arrived_at else None
+
 def report_date(row,kind):
     from datetime import date
     from django.utils import timezone
@@ -26,7 +32,7 @@ def report_date(row,kind):
     else:
         try: value=(row.economics.report_overrides or {}).get('manual_v2',{}).get('date')
         except TripEconomics.DoesNotExist: value=None
-        fallback=timezone.localtime(row.created_at).date() if row.created_at else None
+        fallback=loading_arrival_date(row)
     if value:
         try: return date.fromisoformat(value)
         except ValueError: return fallback
@@ -277,7 +283,7 @@ def overview(request):
     users=User.objects.filter(role='driver').order_by('full_name')
     period=PeriodForm(request.GET or None)
     history_query=DriverReportHistory.objects.all()
-    trip_query=Trip.objects.filter(status='completed').select_related('economics').prefetch_related('expenses')
+    trip_query=Trip.objects.filter(status='completed').select_related('economics').prefetch_related('expenses','stops')
     historical=[row for row in history_query if in_report_period(row,'archive',period)]
     completed=[trip for trip in trip_query if in_report_period(trip,'live',period)]
     by_driver={};live_driver={};unlinked={}
@@ -378,7 +384,7 @@ def report_context(driver=None,label=None,period=None,query=''):
             base_economics.report_overrides={key:value for key,value in (base_economics.report_overrides or {}).items() if key!='manual_v2'}
         base_finances=finances(trip,base_economics)
         original_values=base_finances | {'kilometers':trip.distance_km,'fuel_litres':trip.fuel_used_l,'report_number':f'№{trip.pk}',
-            'date':timezone.localtime(trip.created_at).strftime('%d.%m.%Y') if trip.created_at else '',
+            'date':loading_arrival_date(trip).strftime('%d.%m.%Y') if loading_arrival_date(trip) else '',
             'empty_route':f'{trip.acceptance_location} → {trip.origin}' if trip.acceptance_location else '',
             'loading':loading,'unloading':unloading,'route':route}
         trip.correction_list=[{'label':REPORT_LABELS.get(key,key),'original':original_values.get(key),'current':value} for key,value in trip.report_manual.items()]
