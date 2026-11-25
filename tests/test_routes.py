@@ -79,6 +79,33 @@ class RouteTests(TestCase):
         self.client.force_login(self.admin)
         self.assertContains(self.client.get(reverse('trip_detail',args=[trip.pk])),'24,255')
 
+    def test_empty_distance_is_recorded_at_first_loading_and_used_at_finish(self):
+        trip=self.create([{'kind':'load','address':'Вінниця','cargo':'Зерно','planned_tons':25},{'kind':'unload','address':'Гайсин','cargo':'Зерно','planned_tons':25}])
+        self.accept(trip); self.act(trip,'arrive')
+        self.assertContains(self.client.get(reverse('trip_detail',args=[trip.pk])),'Переїзд до завантаження, км')
+        self.assertEqual(self.act(trip,'depart',actual_tons='24.255',empty_distance_km='').json()['outcome'],'rejected')
+        self.assertEqual(self.act(trip,'depart',actual_tons='24.255',empty_distance_km='70').json()['outcome'],'confirmed')
+        trip.refresh_from_db();self.assertEqual(trip.empty_distance_km,70)
+        self.act(trip,'arrive')
+        self.assertNotContains(self.client.get(reverse('driver_finish',args=[trip.pk])),'name="empty_distance_km"')
+        for point in trip.stops.all(): self.upload(trip,point,kind='ttn' if point.kind=='load' else 'signed_ttn')
+        result=self.client.post(reverse('driver_action',args=[trip.pk]),self.payload(trip,loaded_distance_km='350',fuel_used_l='135',actual_tons='24.255')).json()
+        self.assertEqual(result['outcome'],'confirmed')
+        trip.refresh_from_db();self.assertEqual(trip.distance_km,420)
+
+    def test_driver_enters_fuel_consumption_per_100_km(self):
+        trip=self.final_trip()
+        trip.empty_distance_km=70;trip.save(update_fields=['empty_distance_km'])
+        page=self.client.get(reverse('driver_finish',args=[trip.pk]))
+        self.assertContains(page,'Витрата пального, л/100 км')
+        self.assertNotContains(page,'name="fuel_used_l"')
+        for point in trip.stops.all(): self.upload(trip,point,kind='ttn' if point.kind=='load' else 'signed_ttn')
+        data=self.payload(trip,loaded_distance_km='350',fuel_rate='32,5',actual_tons='24')
+        self.assertEqual(self.client.post(reverse('driver_action',args=[trip.pk]),data).json()['outcome'],'confirmed')
+        trip.refresh_from_db()
+        self.assertEqual(trip.distance_km,420)
+        self.assertEqual(trip.fuel_used_l,Decimal('136.50'))
+
     def test_driver_route_completion_updates_vehicle_assignment(self):
         trip=self.final_trip()
         self.vehicle.default_driver=self.other;self.vehicle.save(update_fields=['default_driver'])
@@ -104,9 +131,10 @@ class RouteTests(TestCase):
 
     def test_completion_requires_documents_and_records_unloading_weight(self):
         trip=self.final_trip(); url=reverse('driver_action',args=[trip.pk])
+        trip.empty_distance_km=70;trip.save(update_fields=['empty_distance_km'])
         unload=trip.stops.last()
         page=self.client.get(reverse('driver_finish',args=[trip.pk]))
-        self.assertContains(page,'Переїзд до завантаження, км')
+        self.assertNotContains(page,'name="empty_distance_km"')
         self.assertContains(page,'Кнопка стане доступною, коли ви завантажите всі відсутні ТТН')
         data={'empty_distance_km':'70','loaded_distance_km':'350','fuel_used_l':'135','actual_tons':'23.75','confirm_without_signed_ttn':'1'}
         self.assertEqual(self.client.post(url,self.payload(trip,**data)).json()['outcome'],'reminder')
@@ -313,7 +341,9 @@ class RouteTests(TestCase):
         data=self.data(points,trip);data.pop('scheduling');return data
     def act(self,trip,mode,stop=None,**extra):
         trip.refresh_from_db();stop=stop or trip.current_stop
-        if mode=='depart' and stop and stop.kind=='load': extra.setdefault('actual_tons',str(stop.planned_tons))
+        if mode=='depart' and stop and stop.kind=='load':
+            extra.setdefault('actual_tons',str(stop.planned_tons))
+            extra.setdefault('empty_distance_km','0')
         if mode=='depart' and stop and trip.stops.filter(state__in=['pending','arrived']).count()==1:
             extra={'empty_distance_km':'0','loaded_distance_km':'420','fuel_used_l':'135',**extra}
             unloads=list(trip.stops.filter(kind='unload').exclude(state='cancelled'))

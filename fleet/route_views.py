@@ -36,6 +36,13 @@ def stop_action(request,pk):
                 from .staff_trip_notifications import notify_staff
                 notify_staff(trip,request.user,'arrived_load' if stop.kind=='load' else 'arrived_unload',stop.address)
         elif mode=='depart' and stop.state=='arrived':
+            empty_distance=None
+            if request.user.role=='driver' and stop.kind=='load' and trip.empty_distance_km is None and not trip.stops.filter(kind='load',state='completed').exists():
+                from django import forms
+                try:
+                    empty_distance=forms.IntegerField(min_value=0,max_value=20000).clean(request.POST.get('empty_distance_km'))
+                except ValidationError:
+                    messages.error(request,'Вкажіть переїзд до завантаження від 0 до 20 000 км.');return trip_response(request,pk)
             final=not trip.stops.filter(state__in=['pending','arrived']).exclude(pk=stop.pk).exists()
             finish_form=None
             if request.user.role=='driver' and final:
@@ -70,6 +77,10 @@ def stop_action(request,pk):
                         point.weight_revision+=1;point.save(update_fields=['actual_tons','weight_revision'])
                         audit(request.user,trip,'Фактична вага точки',f'Точка {point.position}, {point.address}: {before_weight if before_weight is not None else "—"} → {point.actual_tons} т')
                 save_finish_details(trip,finish_form,request.user)
+            if empty_distance is not None:
+                trip.empty_distance_km=empty_distance
+                trip.save(update_fields=['empty_distance_km','updated_at'])
+                audit(request.user,trip,'Водій вказав переїзд до завантаження',f'{empty_distance} км')
             before=stop.actual_tons;stop.actual_tons=tons
             if before!=tons: stop.weight_revision+=1
             stop.state='completed';stop.completed_at=timezone.now();stop.completed_by=request.user;stop.save(update_fields=['actual_tons','weight_revision','state','completed_at','completed_by'])

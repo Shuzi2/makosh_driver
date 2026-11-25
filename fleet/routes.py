@@ -88,6 +88,7 @@ def route_context(trip):
     points=route_document_status(trip,list(trip.stops.all()))
     current=next((s for s in points if s.state in ['pending','arrived']),None) if trip.status not in ['completed','cancelled'] else None
     remaining=[s for s in points if s.state in ['pending','arrived']]
+    needs_empty_distance=bool(current and current.kind=='load' and trip.empty_distance_km is None and not any(s.kind=='load' and s.state=='completed' for s in points))
     action='';mode=''
     if current:
         mode='depart' if current.state=='arrived' else 'arrive'
@@ -97,7 +98,7 @@ def route_context(trip):
     displayed=[s for s in points if s.state!='cancelled' and (simple or s.state!='completed')]
     if current and current in displayed:
         displayed=[current]+[s for s in displayed if s.pk!=current.pk]
-    return {'driver_simple_route':simple,'driver_display_stops':displayed,'driver_completed_stops':[s for s in points if s.state=='completed'] if not simple else [],'route_stops':points,'missing_ttn_stops':[s for s in points if s.state!='cancelled' and not s.ttn_complete],'current_stop':current,'next_stop':remaining[1] if len(remaining)>1 else None,'route_done_count':sum(s.state=='completed' for s in points),'route_stop_count':sum(s.state!='cancelled' for s in points),'stop_mode':mode,'stop_action':action,'route_last_stop':len(remaining)==1,'route_balance':trip.route_balance}
+    return {'needs_empty_distance':needs_empty_distance,'driver_simple_route':simple,'driver_display_stops':displayed,'driver_completed_stops':[s for s in points if s.state=='completed'] if not simple else [],'route_stops':points,'missing_ttn_stops':[s for s in points if s.state!='cancelled' and not s.ttn_complete],'current_stop':current,'next_stop':remaining[1] if len(remaining)>1 else None,'route_done_count':sum(s.state=='completed' for s in points),'route_stop_count':sum(s.state!='cancelled' for s in points),'stop_mode':mode,'stop_action':action,'route_last_stop':len(remaining)==1,'route_balance':trip.route_balance}
 
 
 def route_reminder_context(trip,pending_tons=''):

@@ -77,7 +77,7 @@ def driver_action(request, pk):
     payload={key:request.POST.get(key,'') for key in ['action','status','actual_tons','confirm_without_signed_ttn','expected_revision','stop_id','stop_mode']}
     if 'acceptance_location' in request.POST: payload['acceptance_location']=request.POST['acceptance_location']
     if 'acceptance_odometer_km' in request.POST: payload['acceptance_odometer_km']=request.POST['acceptance_odometer_km']
-    for key in ['distance_km','empty_distance_km','loaded_distance_km','fuel_used_l'] + [key for key in request.POST if key.startswith('unload_weight_')]:
+    for key in ['distance_km','empty_distance_km','loaded_distance_km','fuel_used_l','fuel_rate'] + [key for key in request.POST if key.startswith('unload_weight_')]:
         if key in request.POST: payload[key]=request.POST[key]
     try:
         with transaction.atomic():
@@ -110,7 +110,7 @@ def driver_action(request, pk):
                     result={'outcome':'confirmed','redirect':reverse('dashboard'),'message':'Сервер підтвердив зміну. Логіст бачить оновлені дані.'}
                 elif (action=='status' and payload['status']=='completed' or action=='stop') and response.status_code==200:
                     from urllib.parse import urlencode
-                    details={key:value for key,value in payload.items() if (key in ['actual_tons','distance_km','empty_distance_km','loaded_distance_km','fuel_used_l'] or key.startswith('unload_weight_')) and value}
+                    details={key:value for key,value in payload.items() if (key in ['actual_tons','distance_km','empty_distance_km','loaded_distance_km','fuel_used_l','fuel_rate'] or key.startswith('unload_weight_')) and value}
                     result={'outcome':'reminder','redirect':reverse('driver_finish',args=[pk])+('?' + urlencode(details) if details else '')}
                 else:
                     result={'outcome':'rejected','message':'Дію не збережено. Оновіть рейс і перевірте повідомлення.','redirect':reverse('trip_detail',args=[pk])}
