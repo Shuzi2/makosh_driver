@@ -78,6 +78,40 @@ class WaybillTests(TestCase):
         self.assertEqual(len(response.context['trips']),1)
         self.assertContains(response,'page=1')
 
+    def test_excel_exports_all_filtered_waybills_and_route_details(self):
+        from io import BytesIO
+        from zipfile import ZipFile
+        from datetime import timedelta
+        from fleet.models import TripStop
+        self.trip.route_enabled=True;self.trip.waybill_overrides={'fields':{'fuel_actual':'123.45'}};self.trip.save()
+        TripStop.objects.create(trip=self.trip,position=1,kind='load',address='Київ',cargo='Зерно',planned_tons=25,state='completed')
+        TripStop.objects.create(trip=self.trip,position=2,kind='unload',address='Вінниця',cargo='Зерно',planned_tons=25,actual_tons=Decimal('24.255'),state='completed')
+        Trip.objects.create(vehicle=self.vehicle,driver=self.driver,created_by=self.admin,origin='Луцьк',destination='Одеса',cargo='Зерно',planned_tons=1,status='completed',completed_at=timezone.now()-timedelta(days=10),planned_date=timezone.localdate())
+        self.client.force_login(self.admin)
+        params={'start':timezone.localdate().isoformat(),'end':timezone.localdate().isoformat(),'export':'xlsx'}
+        response=self.client.get(reverse('waybill_list'),params)
+        self.assertEqual(response.status_code,200)
+        self.assertIn('spreadsheetml',response['Content-Type'])
+        with ZipFile(BytesIO(response.content)) as book:
+            first=book.read('xl/worksheets/sheet1.xml').decode();second=book.read('xl/worksheets/sheet2.xml').decode()
+            self.assertIn('123.45',first);self.assertNotIn('Одеса',first)
+            self.assertIn('24.255',second);self.assertIn('Вінниця',second)
+        self.assertEqual(self.client.get(reverse('waybill_list'),{'start':'2026-12-31','end':'2026-01-01','export':'xlsx'}).status_code,400)
+        self.client.force_login(self.driver)
+        self.assertEqual(self.client.get(reverse('waybill_list'),params).status_code,403)
+
+    def test_excel_includes_all_pages_and_respects_search_filters(self):
+        from io import BytesIO
+        from zipfile import ZipFile
+        from xml.etree import ElementTree
+        Trip.objects.bulk_create([Trip(vehicle=self.vehicle,driver=self.driver,created_by=self.admin,origin='Луцьк',destination='Одеса',cargo='Зерно',planned_tons=1,status='completed',completed_at=timezone.now(),planned_date=timezone.localdate()) for _ in range(51)])
+        self.client.force_login(self.admin)
+        response=self.client.get(reverse('waybill_list'),{'loading':'Луцьк','export':'xlsx','page':'2'})
+        with ZipFile(BytesIO(response.content)) as book:
+            sheet=ElementTree.fromstring(book.read('xl/worksheets/sheet1.xml'))
+            rows=sheet.findall('{http://schemas.openxmlformats.org/spreadsheetml/2006/main}sheetData/{http://schemas.openxmlformats.org/spreadsheetml/2006/main}row')
+            self.assertEqual(len(rows),52)
+
     def test_return_to_filtered_list_survives_detail_and_edit(self):
         from urllib.parse import urlencode,parse_qs
         self.client.force_login(self.admin)
@@ -124,6 +158,27 @@ class WaybillTests(TestCase):
                          [('м. Житомир','Київ',71,'Без вантажу'),('Київ','Вінниця',229,'З вантажем')])
         self.assertContains(response,'Місце призначення та/або розвантаження вантажу')
         self.assertContains(response,'Завдання водію')
+
+    def test_waybill_shows_actual_unloading_at_each_destination(self):
+        from fleet.models import TripStop
+        self.trip.route_enabled=True;self.trip.save(update_fields=['route_enabled'])
+        for position,kind,address,weight in [(1,'load','Київ',Decimal('24.255')),(2,'unload','Житомир',Decimal('10.125')),(3,'unload','Вінниця',Decimal('14.130'))]:
+            TripStop.objects.create(trip=self.trip,position=position,kind=kind,address=address,cargo='Зерно',planned_tons=10,actual_tons=weight,state='completed')
+        self.client.force_login(self.admin)
+        response=self.client.get(reverse('waybill_detail',args=[self.trip.pk]))
+        self.assertContains(response,'Фактично розвантажено, т')
+        legs=response.context['legs']
+        self.assertIsNone(legs[0]['unloaded_tons'])
+        self.assertEqual(legs[1]['unloaded_tons'],Decimal('10.125'))
+        self.assertEqual(legs[2]['unloaded_tons'],Decimal('14.130'))
+
+    def test_unloading_weight_for_legacy_and_edited_waybill(self):
+        from fleet.waybills import waybill_data
+        self.trip.actual_tons=Decimal('24.255')
+        self.trip.waybill_overrides={'legs':[{'origin':'Київ','destination':'Вінниця','label':'З вантажем','distance':300}]}
+        self.assertEqual(waybill_data(self.trip)['legs'][0]['unloaded_tons'],Decimal('24.255'))
+        self.trip.waybill_overrides={'legs':[{'origin':'Київ','destination':'Інша адреса','label':'З вантажем','distance':300}]}
+        self.assertIsNone(waybill_data(self.trip)['legs'][0]['unloaded_tons'])
 
     def test_missing_start_keeps_empty_leg_without_inventing_location(self):
         self.trip.acceptance_location='';self.trip.empty_distance_km=12;self.trip.save()

@@ -56,6 +56,12 @@ def waybill_list(request):
                 matching=TripStop.objects.filter(trip_id=OuterRef('pk'),kind=kind,address__icontains=data[field]).exclude(state='cancelled')
                 trips=trips.filter(Q(**{f'{legacy}__icontains':data[field]})|Exists(matching))
     trips=trips.order_by('-completed_at','-pk')
+    if request.GET.get('export')=='xlsx':
+        if request.GET and not form.is_valid():
+            from django.http import HttpResponse
+            return HttpResponse('Перевірте фільтри та період.',status=400)
+        from .waybill_export import export_waybills
+        return export_waybills(trips)
     page=Paginator(trips,50).get_page(request.GET.get('page'))
     params=request.GET.copy();params.pop('page',None)
     return_query=clean_return_query(request.GET.urlencode())
@@ -75,7 +81,7 @@ def detail_url(pk,query):
 
 def waybill_data(trip, use_overrides=True):
     stops=list(trip.stops.exclude(state='cancelled').order_by('position','pk')) if trip.route_enabled else []
-    points=[{'address':s.address,'kind':s.get_kind_display()} for s in stops] or [{'address':trip.origin,'kind':'Завантаження'},{'address':trip.destination,'kind':'Розвантаження'}]
+    points=[{'address':s.address,'kind':s.kind,'actual_tons':s.actual_tons} for s in stops] or [{'address':trip.origin,'kind':'load','actual_tons':None},{'address':trip.destination,'kind':'unload','actual_tons':trip.actual_tons}]
     legs=[{'origin':trip.acceptance_location or 'Не вказано','destination':points[0]['address'],'label':'Без вантажу','distance':trip.empty_distance_km}]
     for index in range(len(points)-1):
         legs.append({'origin':points[index]['address'],'destination':points[index+1]['address'],'label':'З вантажем' if len(points)==2 else 'Ділянка маршруту','distance':trip.loaded_distance_km if len(points)==2 else None})
@@ -85,7 +91,15 @@ def waybill_data(trip, use_overrides=True):
     saved=(trip.waybill_overrides or {}) if use_overrides else {}
     data={**defaults,**saved.get('fields',{})}
     data['date']=parse_date(data['date']) if data.get('date') else None
-    legs=saved.get('legs',legs)
+    legs=[dict(leg) for leg in saved.get('legs',legs)]
+    # Match by a unique destination only: edited or repeated addresses must not
+    # silently associate a weight with the wrong unloading point.
+    def address_key(value): return ' '.join((value or '').casefold().split())
+    for leg in legs:
+        key=address_key(leg.get('destination'))
+        matches=[point for point in points if address_key(point['address'])==key]
+        leg_matches=[row for row in legs if address_key(row.get('destination'))==key]
+        leg['unloaded_tons']=matches[0]['actual_tons'] if key and len(matches)==1 and len(leg_matches)==1 and matches[0]['kind']=='unload' else None
     return {'trip':trip,'data':data,'legs':legs,'empty_rows':range(max(0,16-len(legs))),'multi_stop':len(points)>2,'distance_mismatch':mismatch,'end_odometer_km':end_odometer}
 
 @login_required
@@ -157,14 +171,15 @@ def waybill_edit(request,pk):
                     base_values=normalized(base['data']); submitted=normalized(fields)
                     changed_fields={key:value for key,value in submitted.items() if value!=base_values.get(key) and not (value is None and base_values.get(key)=='')}
                     result={'fields':changed_fields}
-                    if normalized(rows)!=normalized(base['legs']): result['legs']=rows
+                    def editable_legs(items): return [{k:v for k,v in item.items() if k!='unloaded_tons'} for item in items]
+                    if normalized(rows)!=normalized(editable_legs(base['legs'])): result['legs']=rows
                     trip.waybill_overrides=result
                     if previous!=trip.waybill_overrides:
                         trip.save(update_fields=['waybill_overrides','updated_at'])
                         from .views import event
                         prior=normalized(current['data'])
                         changes=[f'{form.fields[key].label}: {prior.get(key) if prior.get(key) not in (None, "") else "—"} → {value if value not in (None, "") else "—"}' for key,value in submitted.items() if value!=prior.get(key)]
-                        if normalized(rows)!=normalized(current['legs']): changes.append('Змінено ділянки маршруту')
+                        if normalized(rows)!=normalized(editable_legs(current['legs'])): changes.append('Змінено ділянки маршруту')
                         event(request.user,'Змінено шляховий лист',trip,('; '.join(changes) or 'Оновлено виправлення бланка')[:1500])
                     return redirect(detail_url(pk,query))
         else:
