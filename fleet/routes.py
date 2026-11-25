@@ -153,4 +153,5 @@ def notify_route(trip,summary):
         trip.route_notice_acknowledged_at=None
         trip.save(update_fields=['route_notice','route_notice_acknowledged_at','updated_at'])
         from .push import queue_trip_change
-        queue_trip_change(trip)
+        push_summary=summary[:350].strip()
+        queue_trip_change(trip,push_summary+' · Відкрийте рейс і підтвердьте зміни.')

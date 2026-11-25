@@ -21,6 +21,11 @@ class Command(BaseCommand):
                 promote_ready()
             except Exception:
                 logger.exception('Не вдалося перевірити чергу рейсів')
+            try:
+                from fleet.maintenance_notifications import scan_due
+                scan_due()
+            except Exception:
+                logger.exception('Не вдалося перевірити нагадування ТО')
             worker_tick()
             if options['once']:
                 return

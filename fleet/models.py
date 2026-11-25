@@ -189,6 +189,16 @@ class MaintenanceItem(models.Model):
         else: key,label='ok','Заплановано'
         return {'key':key,'label':label,'days':days,'km':km}
 
+class MaintenanceNotification(models.Model):
+    recipient=models.ForeignKey(settings.AUTH_USER_MODEL,on_delete=models.CASCADE,related_name='maintenance_notifications')
+    item=models.ForeignKey(MaintenanceItem,on_delete=models.CASCADE,related_name='notifications')
+    episode=models.CharField(max_length=100)
+    message=models.CharField(max_length=300)
+    created_at=models.DateTimeField(default=timezone.now)
+    read_at=models.DateTimeField(null=True,blank=True)
+    class Meta:
+        constraints=[models.UniqueConstraint(fields=['recipient','item','episode'],name='maintenance_notice_episode_unique')]
+
 class DriverServiceRequest(models.Model):
     vehicle = models.ForeignKey(Vehicle,on_delete=models.PROTECT,related_name='driver_service_requests')
     driver = models.ForeignKey(settings.AUTH_USER_MODEL,on_delete=models.PROTECT,related_name='service_requests')
@@ -609,6 +619,7 @@ class TripExpense(models.Model):
     category=models.CharField(max_length=16,choices=Category.choices)
     amount=models.DecimalField(max_digits=12,decimal_places=2)
     currency=models.CharField(max_length=3,choices=[('UAH','Гривня'),('EUR','Євро'),('USD','Долар')])
+    converted_uah=models.DecimalField('Сума у гривнях',max_digits=12,decimal_places=2,null=True,blank=True,validators=[MinValueValidator(0)])
     litres=models.DecimalField(max_digits=10,decimal_places=2,null=True,blank=True)
     comment=models.CharField(max_length=500,blank=True)
     receipt=models.FileField(upload_to=expense_receipt_path,max_length=250,blank=True)
@@ -650,6 +661,7 @@ class PushDelivery(models.Model):
     subscription=models.ForeignKey(PushSubscription,on_delete=models.CASCADE,related_name='deliveries')
     recipient=models.ForeignKey(settings.AUTH_USER_MODEL,on_delete=models.CASCADE,related_name='+')
     trip=models.ForeignKey(Trip,null=True,blank=True,on_delete=models.CASCADE,related_name='+')
+    service_request=models.ForeignKey(DriverServiceRequest,null=True,blank=True,on_delete=models.SET_NULL,related_name='+')
     kind=models.CharField(max_length=20)
     message=models.CharField(max_length=500,blank=True)
     status=models.CharField(max_length=12,default='pending',db_index=True)

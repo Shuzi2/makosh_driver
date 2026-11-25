@@ -12,6 +12,7 @@ from fleet import document_removal
 from fleet import driver_notifications
 from fleet import waybills
 from fleet import driver_service
+from fleet import driver_maintenance
 from fleet import driver_reports, driver_report_export
 from fleet import push
 from fleet import test_trip_delete
@@ -50,6 +51,7 @@ path('documents/<int:pk>/remove/',document_removal.remove_driver_photo,name='dri
 path('driver/trips/<int:pk>/delay/',trip_operations.delay,name='driver_delay'),
 path('driver/trips/<int:pk>/expenses/',trip_operations.expense,name='driver_expense'),
 path('expenses/<int:pk>/receipt/',trip_operations.receipt,name='expense_receipt'),
+path('expenses/<int:pk>/conversion/',views.staff_required(trip_operations.expense_conversion),name='expense_conversion'),
 path('notifications/ttn/', ttn_notifications.inbox, name='ttn_notifications'),
 path('notifications/ttn/read/', ttn_notifications.mark_read, name='ttn_notification_read'),
 path('administration/', administration.overview, name='admin_overview'),
@@ -81,6 +83,10 @@ path('maintenance/driver-service/<int:pk>/',driver_service.manager_service_updat
 path('driver/service/',driver_service.driver_service,name='driver_service'),
 path('driver/service/new/',driver_service.driver_service_edit,name='driver_service_create'),
 path('driver/service/<int:pk>/edit/',driver_service.driver_service_edit,name='driver_service_edit'),
+path('driver/service/maintenance/new/',driver_maintenance.plan,name='driver_maintenance_create'),
+path('driver/service/maintenance/<int:pk>/edit/',driver_maintenance.plan,name='driver_maintenance_edit'),
+path('driver/service/maintenance/<int:pk>/complete/',driver_maintenance.complete,name='driver_maintenance_complete'),
+path('driver/service/odometer/',driver_maintenance.odometer,name='driver_maintenance_odometer'),
 path('maintenance/new/',views.staff_required(maintenance.edit),name='maintenance_create'),
 path('maintenance/<int:pk>/edit/',views.staff_required(maintenance.edit),name='maintenance_edit'),
 path('maintenance/<int:pk>/complete/',views.staff_required(maintenance.complete),name='maintenance_complete'),

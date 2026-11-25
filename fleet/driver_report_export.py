@@ -41,7 +41,10 @@ def live_row(trip):
     metrics=trip.report_finances
     note=[]
     if trip.report_economics is None: note.append('Попередні значення з поточних налаштувань, ставки не збережені')
-    if metrics['foreign']: note.append('Є витрати в іноземній валюті: загальна сума не розрахована')
+    if metrics['other_uah']:
+        suffix='перевірте ручне значення загальних витрат' if 'total' in trip.report_manual else 'враховується у формулі загальних витрат'
+        note.append(f"Додатково витрати водія без пального: {metrics['other_uah']} грн; {suffix}")
+    if metrics['foreign']: note.append('Для витрат в іноземній валюті потрібна сума у гривнях: загальна сума не розрахована')
     date=trip.report_fields['date']
     values=[date,trip.report_kilometers,field('daily_rate'),field('days'),field('bonus_per_km'),field('adblue_price'),field('fuel_price'),metrics.get('fuel_rate'),field('adblue_rate'),field('depreciation_per_km'),field('credit_per_km'),field('price'),field('extra_cost'),trip.report_fields['empty_route'],trip.report_fields['loading'],trip.report_fields['unloading'],trip.report_fields['route'],*[metrics.get(k) for k in ('fuel','adblue','depreciation','wage','total','profit','cost_per_km','profit_per_km','margin')]]
     if trip.report_fuel_manual != '': note.append('Витрата пального виправлена лише у звіті')

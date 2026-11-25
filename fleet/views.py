@@ -396,7 +396,9 @@ def trip_detail(request,pk):
     document_stop=trip.stops.filter(pk=request.GET.get('document_stop')).first() if request.GET.get('document_stop','').isdigit() else trip.current_stop
     upload_initial={'stop':document_stop}
     if document_stop: upload_initial['kind']='ttn' if document_stop.kind=='load' else 'signed_ttn'
-    return render(request,"fleet/trip_detail.html",{**route_data,"trip":trip,"expenses":trip.expenses.select_related('driver'),"stage_steps":stage_progress(trip),'stage_options':[(key,LABELS[key]) for key in ['loading','road','unloading','completed'] if key!=trip.status],"upload_form":DocumentForm(trip=trip,initial=upload_initial),"assignment_form":AssignmentForm(initial={"driver":trip.driver}) if request.user.manages_fleet else None,"can_write":can_write(request.user,trip),"queue_block_reason":queue_block_reason(trip) if trip.status == "queued" else "","next_status":next_status,"next_label":dict(Trip.Status.choices).get(next_status),"quick_editors":quick_editors,"facts_form":facts_form,"events":history_page.object_list,"history_page":history_page})
+    from .expense_totals import summarize
+    expenses=list(trip.expenses.select_related('driver'))
+    return render(request,"fleet/trip_detail.html",{**route_data,"trip":trip,"expenses":expenses,"expense_summary":summarize(expenses),"stage_steps":stage_progress(trip),'stage_options':[(key,LABELS[key]) for key in ['loading','road','unloading','completed'] if key!=trip.status],"upload_form":DocumentForm(trip=trip,initial=upload_initial),"assignment_form":AssignmentForm(initial={"driver":trip.driver}) if request.user.manages_fleet else None,"can_write":can_write(request.user,trip),"queue_block_reason":queue_block_reason(trip) if trip.status == "queued" else "","next_status":next_status,"next_label":dict(Trip.Status.choices).get(next_status),"quick_editors":quick_editors,"facts_form":facts_form,"events":history_page.object_list,"history_page":history_page})
 
 
 @staff_required

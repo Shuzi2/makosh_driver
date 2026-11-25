@@ -16,4 +16,4 @@
     <a class="btn" href="#ttn-upload">＋ Додати ТТН</a>
   {% endif %}
 </div>
-{% if user.manages_fleet and trip.is_accepted and trip.acceptance_location %}<section class="panel"><h2>Місце водія при прийнятті</h2><p>{{ trip.acceptance_location }}</p><p class="hint">Вказано {{ trip.accepted_at|date:'d.m.Y H:i' }}. Місце може змінитися до початку рейсу.</p></section>{% endif %}
+{% if user.manages_fleet and trip.is_accepted %}<section class="panel"><div class="section-head"><h2>Місце водія при прийнятті</h2>{% include 'fleet/edit_pencil.html' with key='acceptance_location' label='місце водія при прийнятті' %}</div><p>{{ trip.acceptance_location|default:'Не вказано' }}</p><p class="hint">Прийнято {{ trip.accepted_at|date:'d.m.Y H:i' }}. Виправлення зберігаються в історії рейсу.</p></section>{% endif %}

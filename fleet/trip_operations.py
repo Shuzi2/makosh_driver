@@ -7,7 +7,7 @@ from django.core.exceptions import PermissionDenied
 from django.db import transaction
 from django.http import FileResponse, Http404
 from django.shortcuts import get_object_or_404, redirect, render
-from django.views.decorators.http import require_GET, require_http_methods
+from django.views.decorators.http import require_GET, require_POST, require_http_methods
 from .forms import DocumentForm
 from .models import AuditEvent, DelayNotification, Trip, TripDelay, TripExpense, User
 from .permissions_models import ModeratorPermissionSettings
@@ -69,7 +69,10 @@ def delay(request,pk):
             if permissions is None or (permissions.view_documents and permissions.view_trips): roles.append('moderator')
             DelayNotification.objects.bulk_create([DelayNotification(recipient_id=user_id,delay=record) for user_id in User.objects.filter(is_active=True,role__in=roles).values_list('pk',flat=True)])
             from .push import enqueue_staff
-            enqueue_staff('staff_delay',trip)
+            description=f'{request.user.full_name} · {trip.vehicle.plate}: {record.get_reason_display()}'
+            if record.minutes: description+=f' · орієнтовно {record.minutes} хв'
+            if record.comment: description+=f' · {record.comment}'
+            enqueue_staff('staff_delay',trip,message=description)
         messages.success(request,'Логістів повідомлено про затримку.')
         return redirect('trip_detail',pk=trip.pk)
     return render(request,'fleet/driver_operation_form.html',{'trip':trip,'form':form,'title':'Повідомити про затримку','submit_label':'Надіслати логістам','description':'Оберіть причину та, за бажанням, вкажіть приблизний час.'})
@@ -95,6 +98,30 @@ def expense(request,pk):
         messages.success(request,'Витрату збережено.')
         return redirect('trip_detail',pk=trip.pk)
     return render(request,'fleet/driver_operation_form.html',{'trip':trip,'form':form,'title':'Додати витрату','submit_label':'Зберегти витрату','description':'Вкажіть суму, валюту та за потреби додайте чек.'})
+
+
+class ExpenseConversionForm(forms.Form):
+    converted_uah=forms.DecimalField(label='Сума у гривнях',required=False,min_value=0,max_digits=12,decimal_places=2)
+    previous=forms.DecimalField(required=False,min_value=0,max_digits=12,decimal_places=2,widget=forms.HiddenInput)
+
+@require_POST
+def expense_conversion(request,pk):
+    with transaction.atomic():
+        item=get_object_or_404(TripExpense.objects.select_for_update().select_related('trip'),pk=pk)
+        if item.currency=='UAH' or item.category=='fuel': raise Http404
+        raw=request.POST.copy()
+        raw['converted_uah']=raw.get('converted_uah','').strip().replace(',','.')
+        form=ExpenseConversionForm(raw)
+        if form.is_valid() and form.cleaned_data['previous']!=item.converted_uah:
+            messages.error(request,'Сума вже змінилася. Перевірте актуальне значення перед збереженням.')
+        elif form.is_valid():
+            old=item.converted_uah;item.converted_uah=form.cleaned_data['converted_uah']
+            if old!=item.converted_uah:
+                item.save(update_fields=['converted_uah'])
+                AuditEvent.objects.create(trip=item.trip,actor=request.user,action='Уточнено витрату в гривнях',detail=f'Витрата №{item.pk}: {item.amount} {item.currency}, {old if old is not None else "—"} → {item.converted_uah if item.converted_uah is not None else "—"} грн')
+                messages.success(request,'Суму у гривнях збережено.')
+        else: messages.error(request,'Вкажіть коректну суму в гривнях: від 0 до 9 999 999 999,99.')
+    return redirect('trip_detail',pk=item.trip_id)
 
 
 @login_required

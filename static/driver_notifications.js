@@ -42,7 +42,7 @@
       data.items.forEach(item=>{
         const link=document.createElement('a');link.href=item.url;link.className='driver-notice-item'+(item.read?'':' is-unread');
         const title=document.createElement('strong');title.textContent=item.type==='service'?'Сервіс · '+item.title:'Рейс №'+item.trip+' · '+item.vehicle;
-        const info=document.createElement('span');info.textContent=(item.type==='service'?(item.message||'Оновлення сервісу'):item.type==='route'?'Маршрут змінено · підтвердьте ознайомлення':'Нове призначення')+' · '+item.time;
+        const info=document.createElement('span');info.textContent=(item.type==='service'?(item.message||'Оновлення сервісу'):item.type==='route'?((item.message||'Рейс змінено')+' · Підтвердьте ознайомлення'):'Нове призначення')+' · '+item.time;
         link.append(title,info);
         if(!item.read && item.type!=='route')link.addEventListener('click',async event=>{
           event.preventDefault();

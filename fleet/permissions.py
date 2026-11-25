@@ -31,6 +31,7 @@ MODERATOR_ROUTES = {
     'trip_instruction': ('view_trips', 'edit_trips'),
     'ttn_notifications': ('view_documents', 'view_documents'), 'ttn_notification_read': ('view_documents', 'view_documents'),
     'expense_receipt': ('view_documents', 'view_documents'),
+    'expense_conversion': ('view_trips', 'edit_trips'),
     'original_received': ('view_documents', 'edit_documents'),
     'report': ('view_reports', 'edit_trips'), 'analytics': ('view_reports', 'edit_trips'),
     'driver_reports': ('view_reports','edit_trips'), 'driver_report_export': ('view_reports','edit_trips'), 'driver_report_archive_export': ('view_reports','edit_trips'), 'driver_report_defaults': ('view_reports','edit_trips'), 'driver_report_detail': ('view_reports','edit_trips'), 'driver_report_unmatched': ('view_reports','edit_trips'), 'driver_economics_edit': ('view_reports','edit_trips'), 'driver_economics_preview': ('view_reports','edit_trips'),

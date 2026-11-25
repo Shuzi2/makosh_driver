@@ -11,6 +11,19 @@ from fleet.models import User, Vehicle, Trip
                    WEBPUSH_PUBLIC_KEY='test-public',WEBPUSH_PRIVATE_KEY='test-private',WEBPUSH_SUBJECT='mailto:test@example.com',
                    STORAGES={'default':{'BACKEND':'django.core.files.storage.FileSystemStorage'},'staticfiles':{'BACKEND':'django.contrib.staticfiles.storage.StaticFilesStorage'}})
 class DriverPushTests(TestCase):
+    def test_ttn_description_identifies_loading_and_unloading_points(self):
+        from fleet.document_notices import describe
+        from fleet.models import Document, TripStop
+        load=TripStop.objects.create(trip=self.trip,position=2,kind='load',address='с. Білокриниця, Тернопільська область',cargo='Зерно',planned_tons=10)
+        unload=TripStop.objects.create(trip=self.trip,position=4,kind='unload',address='м. Гнівань, Вінницька область',cargo='Зерно',planned_tons=10)
+        for stop,kind,expected in [(load,'ttn','Завантаження · точка 2'),(unload,'signed_ttn','Розвантаження · точка 4')]:
+            doc=Document(trip=self.trip,uploaded_by=self.driver,stop=stop,kind=kind,ttn_number='159')
+            info=describe(doc)
+            self.assertIn(expected,info['message'])
+            self.assertIn(self.driver.full_name,info['message'])
+            self.assertIn('ТТН №159',info['message'])
+            self.assertIn(stop.address,info['location'])
+        self.assertIn('Підписана ТТН розвантаження',describe(Document(trip=self.trip,uploaded_by=self.driver,stop=unload,kind='signed_ttn'))['label'])
     def setUp(self):
         self.driver=User.objects.create_user('+380501010101',role='driver',full_name='Водій',must_change_password=False)
         self.other=User.objects.create_user('+380501010102',role='driver',full_name='Інший',must_change_password=False)
@@ -72,18 +85,55 @@ class DriverPushTests(TestCase):
         self.client.force_login(self.staff);self.subscribe()
         self.client.force_login(self.driver)
         self.trip.accepted_at=timezone.now();self.trip.accepted_by=self.driver;self.trip.save()
-        self.assertEqual(self.client.post(reverse('driver_delay',args=[self.trip.pk]),{'reason':'traffic','minutes':30}).status_code,302)
+        self.assertEqual(self.client.post(reverse('driver_delay',args=[self.trip.pk]),{'reason':'traffic','minutes':30,'comment':'Дорогу перекрито'}).status_code,302)
         self.assertEqual(PushDelivery.objects.filter(kind='staff_delay').count(),1)
+        delay=PushDelivery.objects.get(kind='staff_delay')
+        self.assertIn(self.driver.full_name,delay.message)
+        self.assertIn('30 хв',delay.message)
+        self.assertIn('Дорогу перекрито',delay.message)
         image=BytesIO();Image.new('RGB',(10,10)).save(image,format='PNG')
         with tempfile.TemporaryDirectory() as media, override_settings(MEDIA_ROOT=media):
             upload=SimpleUploadedFile('ttn.png',image.getvalue(),content_type='image/png')
             self.assertEqual(self.client.post(reverse('document_upload',args=[self.trip.pk]),{'kind':'ttn','file':upload}).status_code,302)
         self.assertEqual(PushDelivery.objects.filter(kind='staff_ttn').count(),1)
+        notice=PushDelivery.objects.get(kind='staff_ttn')
+        self.assertIn('ТТН із завантаження',notice.message)
+        self.assertIn(self.driver.full_name,notice.message)
+        self.assertIn('Завантаження',notice.message)
+        from fleet.push import process_deliveries
+        with patch('fleet.push.webpush') as sender:
+            process_deliveries()
+        payloads=[json.loads(call.kwargs['data']) for call in sender.call_args_list]
+        ttn=next(item for item in payloads if 'Нова ТТН' in item['title'])
+        self.assertIn(f'рейс №{self.trip.pk}',ttn['title'])
+        self.assertIn(self.driver.full_name,ttn['body'])
+        self.assertIn('ТТН із завантаження',ttn['body'])
         page=self.client.get(reverse('driver_service_create'))
         data={'request_key':page.context['form'].initial['request_key'],'category':'problem','title':'Пічка'}
         self.assertEqual(self.client.post(reverse('driver_service_create'),data).status_code,302)
         self.assertEqual(self.client.post(reverse('driver_service_create'),data).status_code,302)
         self.assertEqual(PushDelivery.objects.filter(kind='staff_service').count(),1)
+        service=PushDelivery.objects.get(kind='staff_service')
+        self.assertIn(self.driver.full_name,service.message)
+        self.assertIn('Пічка',service.message)
+        self.assertIsNotNone(service.service_request_id)
+        with patch('fleet.push.webpush') as sender: process_deliveries()
+        payload=json.loads(sender.call_args.kwargs['data'])
+        self.assertIn(f'#service-{service.service_request_id}',payload['url'])
+        self.assertIn('status=all',payload['url'])
+
+    def test_route_change_push_includes_change_and_opens_trip(self):
+        self.subscribe()
+        from fleet.routes import notify_route
+        from fleet.push import process_deliveries
+        notify_route(self.trip,'Адреса завантаження: Вінниця → Гнівань')
+        notice=self.client.get(reverse('driver_notifications')).json()['items'][0]
+        self.assertIn('Гнівань',notice['message'])
+        with patch('fleet.push.webpush') as sender: process_deliveries()
+        payload=json.loads(sender.call_args.kwargs['data'])
+        self.assertIn('Гнівань',payload['body'])
+        self.assertIn('підтвердьте',payload['body'])
+        self.assertEqual(payload['url'],reverse('trip_detail',args=[self.trip.pk]))
 
     def test_assignment_queues_only_recipient_and_delivers_generic_payload(self):
         self.subscribe()

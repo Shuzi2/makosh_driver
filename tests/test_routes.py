@@ -1000,6 +1000,8 @@ class RouteTests(TestCase):
         data=self.client.get('/notifications/ttn/').json()
         self.assertEqual(data['unread'],2)
         self.assertEqual(data['items'][0]['kind'],'ТТН із завантаження')
+        self.assertIn('Завантаження · точка 1: Вінниця',data['items'][0]['location'])
+        self.assertEqual(data['items'][0]['driver'],self.driver.full_name)
         self.assertEqual(self.client.post('/notifications/ttn/read/',{'id':data['items'][0]['id']}).status_code,200)
         remaining=self.client.get('/notifications/ttn/').json()
         self.assertEqual(remaining['unread'],1)

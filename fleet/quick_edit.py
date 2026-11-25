@@ -7,6 +7,24 @@ from .models import Trip
 from django import forms
 from decimal import Decimal
 
+class AcceptanceLocationForm(forms.ModelForm):
+    revision=forms.DateTimeField(widget=forms.HiddenInput)
+    class Meta:
+        model=Trip
+        fields=['acceptance_location']
+        labels={'acceptance_location':'Місце водія при прийнятті'}
+        help_texts={'acceptance_location':'Вкажіть місце, де автомобіль був під час прийняття рейсу.'}
+    def __init__(self,*args,**kwargs):
+        super().__init__(*args,**kwargs)
+        self.initial['revision']=self.instance.updated_at.isoformat()
+        from django.urls import reverse
+        self.fields['acceptance_location'].widget.attrs.update({'list':'acceptance-location-options','autocomplete':'off','data-acceptance-search':reverse('settlement_search'),'aria-describedby':'acceptance-location-status','placeholder':'Почніть вводити назву міста або села'})
+    def clean(self):
+        data=super().clean()
+        if data.get('revision') and data['revision']!=self.instance.updated_at:
+            self.add_error(None,'Рейс уже змінився. Відкрийте актуальні дані та повторіть редагування.')
+        return data
+
 
 class RouteWeightsForm(forms.Form):
     revision=forms.DateTimeField(widget=forms.HiddenInput)
@@ -45,6 +63,7 @@ class RouteWeightsForm(forms.Form):
         return changed
 
 GROUPS={
+    'acceptance_location':('Місце водія при прийнятті',['acceptance_location']),
     'origin':('Місце завантаження',['origin','origin_lat','origin_lon']),
     'destination':('Місце розвантаження',['destination','destination_lat','destination_lon']),
     'loading_contact':('Контакт на завантаження',['loading_contact_name','loading_contact_phone']),
@@ -60,6 +79,8 @@ GROUPS={
 }
 
 def edit_form(trip,key,data=None):
+    if key=='acceptance_location':
+        return AcceptanceLocationForm(data,instance=trip)
     if trip.route_enabled and key=='actual_tons':
         return RouteWeightsForm(data,trip=trip)
     fields=GROUPS[key][1]
@@ -71,13 +92,13 @@ def edit_form(trip,key,data=None):
     return form
 
 def editors(trip):
-    return [{'key':key,'title':title,'form':edit_form(trip,key)} for key,(title,fields) in GROUPS.items() if not trip.route_enabled or key in ['planned_date','distance_km','fuel_used_l','notes','actual_tons']]
+    return [{'key':key,'title':title,'form':edit_form(trip,key)} for key,(title,fields) in GROUPS.items() if not trip.route_enabled or key in ['planned_date','distance_km','fuel_used_l','notes','actual_tons','acceptance_location']]
 
 def quick_edit(request,pk,key):
     from .views import event
     from django.http import Http404
     if key not in GROUPS: raise Http404
-    if get_object_or_404(Trip,pk=pk).route_enabled and key not in ['planned_date','distance_km','fuel_used_l','notes','actual_tons']: return redirect('trip_edit',pk=pk)
+    if get_object_or_404(Trip,pk=pk).route_enabled and key not in ['planned_date','distance_km','fuel_used_l','notes','actual_tons','acceptance_location']: return redirect('trip_edit',pk=pk)
     if request.method=='POST':
         with transaction.atomic():
             trip=get_object_or_404(Trip.objects.select_for_update(),pk=pk)

@@ -25,7 +25,7 @@ def inbox(request):
     notices=visible_notices(request.user)
     items=[{'id':n.pk,'type':'trip','trip':n.trip_id,'vehicle':n.trip.vehicle.plate,'url':reverse('driver_trips')+f'#trip-{n.trip_id}','time':timezone.localtime(n.created_at).strftime('%d.%m.%Y %H:%M'),'sort_time':n.created_at.isoformat(),'read':bool(n.read_at)} for n in notices[:40]]
     changes=Trip.objects.filter(driver=request.user,status__in=Trip.ACTIVE+['queued'],route_notice_acknowledged_at__isnull=True).exclude(route_notice='').select_related('vehicle')
-    items += [{'id':f'route:{trip.pk}','type':'route','trip':trip.pk,'vehicle':trip.vehicle.plate,'url':reverse('trip_detail',args=[trip.pk]),'time':timezone.localtime(trip.updated_at).strftime('%d.%m.%Y %H:%M'),'sort_time':trip.updated_at.isoformat(),'read':False} for trip in changes[:40]]
+    items += [{'id':f'route:{trip.pk}','type':'route','trip':trip.pk,'vehicle':trip.vehicle.plate,'message':trip.route_notice[:250]+('…' if len(trip.route_notice)>250 else ''),'url':reverse('trip_detail',args=[trip.pk]),'time':timezone.localtime(trip.updated_at).strftime('%d.%m.%Y %H:%M'),'sort_time':trip.updated_at.isoformat(),'read':False} for trip in changes[:40]]
     services=DriverServiceNotification.objects.filter(recipient=request.user,service_request__driver=request.user).select_related('service_request')
     items += [{'id':f'service:{n.pk}','type':'service','title':n.service_request.title,'message':n.message,'url':reverse('driver_service')+f'#service-{n.service_request_id}','time':timezone.localtime(n.created_at).strftime('%d.%m.%Y %H:%M'),'sort_time':n.created_at.isoformat(),'read':bool(n.read_at)} for n in services[:40]]
     items.sort(key=lambda item:item['sort_time'],reverse=True)

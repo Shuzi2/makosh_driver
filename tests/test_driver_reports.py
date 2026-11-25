@@ -19,6 +19,34 @@ class DriverReportsTests(TestCase):
         self.admin=User.objects.create_user('+380501234501',role='admin',full_name='Логіст',must_change_password=False)
         self.driver=User.objects.create_user('+380501234502',role='driver',full_name='Тестовий Водій',must_change_password=False)
 
+    def test_driver_expenses_are_listed_summed_and_converted_in_report(self):
+        from fleet.driver_report_export import live_row
+        vehicle=Vehicle.objects.create(plate='EXPENSE1',kind='tent')
+        trip=Trip.objects.create(vehicle=vehicle,driver=self.driver,created_by=self.admin,origin='А',destination='Б',cargo='Зерно',planned_tons=1,planned_date=timezone.localdate(),status='completed',completed_at=timezone.now(),distance_km=100,fuel_used_l=30)
+        economics=TripEconomics.objects.create(trip=trip,price=10000,daily_rate=1000,days=1,bonus_per_km=3,fuel_price=50,adblue_price=20,adblue_rate=1,depreciation_per_km=9,credit_per_km=6,extra_cost=100)
+        TripExpense.objects.create(trip=trip,driver=self.driver,category='road',amount=300,currency='UAH')
+        TripExpense.objects.create(trip=trip,driver=self.driver,category='parking',amount=500,currency='UAH')
+        TripExpense.objects.create(trip=trip,driver=self.driver,category='fuel',amount=800,currency='UAH')
+        foreign=TripExpense.objects.create(trip=trip,driver=self.driver,category='road',amount=10,currency='EUR')
+        self.client.force_login(self.admin)
+        page=self.client.get(reverse('trip_detail',args=[trip.pk]))
+        self.assertEqual({x['currency']:x['amount'] for x in page.context['expense_summary']['totals']},{'UAH':Decimal('1600'),'EUR':Decimal('10')})
+        self.assertIsNone(finances(trip,economics)['total'])
+        url=reverse('expense_conversion',args=[foreign.pk])
+        self.assertEqual(self.client.post(url,{'converted_uah':'450,00'}).status_code,302)
+        foreign.refresh_from_db();self.assertEqual(foreign.converted_uah,Decimal('450'))
+        self.client.post(url,{'converted_uah':'1','previous':''})
+        foreign.refresh_from_db();self.assertEqual(foreign.converted_uah,Decimal('450'))
+        metrics=finances(trip,economics)
+        self.assertEqual(metrics['other_uah'],Decimal('1250'))
+        self.assertEqual(metrics['total'],Decimal('5670'))
+        report=self.client.get(reverse('driver_report_detail',args=[self.driver.pk]))
+        self.assertEqual(report.context['period_totals']['live']['extra_cost']['value'],Decimal('1350'))
+        self.assertIn('1250',live_row(report.context['trips'][0])[-1])
+        self.client.force_login(self.driver)
+        self.assertEqual(self.client.post(url,{'converted_uah':'1'}).status_code,403)
+        foreign.refresh_from_db();self.assertEqual(foreign.converted_uah,Decimal('450'))
+
     def test_driver_report_uses_first_loading_arrival_for_period_totals_and_excel(self):
         from datetime import datetime
         from io import BytesIO

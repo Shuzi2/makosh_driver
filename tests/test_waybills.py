@@ -14,6 +14,30 @@ class WaybillTests(TestCase):
         self.vehicle=Vehicle.objects.create(plate='WAY1234',trailer_plate='WAY5678',kind='tent',default_driver=self.driver)
         self.trip=Trip.objects.create(vehicle=self.vehicle,driver=self.driver,created_by=self.admin,origin='Київ',destination='Вінниця',cargo='Добрива',planned_tons=Decimal('20'),status='completed',completed_at=timezone.now(),planned_date=timezone.localdate(),acceptance_location='м. Житомир',distance_km=300,fuel_used_l=Decimal('100'))
 
+    def test_dispatcher_and_moderator_correct_acceptance_location(self):
+        from fleet.models import AuditEvent
+        moderator=User.objects.create_user('+380501111104',role='moderator',full_name='Модератор',must_change_password=False)
+        self.trip.route_enabled=True;self.trip.accepted_at=timezone.now();self.trip.accepted_by=self.driver;self.trip.save()
+        url=reverse('trip_quick_edit',args=[self.trip.pk,'acceptance_location'])
+        self.client.force_login(self.admin)
+        detail=self.client.get(reverse('trip_detail',args=[self.trip.pk]))
+        self.assertContains(detail,'data-quick-edit="acceptance_location"')
+        self.assertContains(detail,'data-acceptance-search="/settlements/search/"')
+        self.assertContains(detail,'acceptance-location-options')
+        self.assertContains(self.client.get(url),'acceptance_location.js')
+        stale=self.trip.updated_at.isoformat()
+        self.assertEqual(self.client.post(url,{'revision':stale,'acceptance_location':'м. Вінниця'}).status_code,302)
+        self.trip.refresh_from_db()
+        self.assertEqual(self.trip.acceptance_location,'м. Вінниця')
+        self.assertContains(self.client.get(reverse('waybill_detail',args=[self.trip.pk])),'м. Вінниця')
+        self.assertTrue(AuditEvent.objects.filter(trip=self.trip,detail__contains='м. Житомир').exists())
+        self.assertEqual(self.client.post(url,{'revision':stale,'acceptance_location':'Застаріле'}).status_code,200)
+        self.client.force_login(moderator)
+        self.assertEqual(self.client.post(url,{'revision':self.trip.updated_at.isoformat(),'acceptance_location':'м. Гнівань'}).status_code,302)
+        self.trip.refresh_from_db();self.assertEqual(self.trip.acceptance_location,'м. Гнівань')
+        self.client.force_login(self.driver)
+        self.assertEqual(self.client.post(url,{'revision':self.trip.updated_at.isoformat(),'acceptance_location':'Інше'}).status_code,403)
+
     def test_completed_trip_has_printable_waybill_and_unavailable_mileage_is_not_guessed(self):
         self.client.force_login(self.admin)
         page=self.client.get(reverse('waybill_list'))

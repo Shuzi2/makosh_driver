@@ -46,9 +46,10 @@ def in_report_period(row,kind,period):
     return (not start and not end) or (value is not None and (not start or value>=start) and (not end or value<=end))
 
 def finances(trip,inputs):
-    expenses=[item for item in trip.expenses.all() if item.category!='fuel']
-    other_uah=sum((item.amount for item in expenses if item.currency=='UAH'),Decimal('0'))
-    foreign=any(item.currency!='UAH' for item in expenses)
+    from .expense_totals import summarize
+    expenses=summarize(trip.expenses.all())
+    other_uah=expenses['nonfuel_uah']
+    foreign=expenses['missing_conversion']
     if inputs is None:
         km=Decimal(trip.distance_km) if trip.distance_km is not None else None
         return {'other_uah':other_uah,'foreign':foreign,'fuel_rate':trip.fuel_used_l/km*100 if trip.fuel_used_l is not None and km else None}
@@ -237,7 +238,7 @@ def period_totals(history, trips):
             'kilometers': report_kilometers(trip,economics), 'days': economics.days if economics else None, 'fuel_litres': result.get('report_fuel_litres',number(trip.fuel_used_l)),
             'revenue': economics.price if economics else None, 'wage': result.get('wage'),
             'fuel_cost': result.get('fuel'), 'adblue_cost': result.get('adblue'),
-            'depreciation_cost': result.get('depreciation'), 'extra_cost': economics.extra_cost if economics else None,
+            'depreciation_cost': result.get('depreciation'), 'extra_cost': (economics.extra_cost + result['other_uah']) if economics and economics.extra_cost is not None and not result['foreign'] else None,
             'expenses': result.get('total'), 'profit': result.get('profit'),
         })
     return {'archive': summarize(archived), 'live': summarize(live)}

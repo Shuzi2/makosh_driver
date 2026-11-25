@@ -18,6 +18,14 @@ def assigned_vehicle(user):
     return active.vehicle if active else Vehicle.objects.filter(default_driver=user).first()
 
 
+def service_push_message(item):
+    message=f'{item.driver.full_name} · {item.tractor_plate}: {item.title}'
+    if item.urgent: message='Терміново · '+message
+    if item.description: message+=' · '+item.description
+    if item.parts: message+=' · Запчастини: '+item.parts
+    return message[:500]
+
+
 class ServiceForm(forms.ModelForm):
     request_key=forms.UUIDField(widget=forms.HiddenInput,required=False)
     revision=forms.CharField(widget=forms.HiddenInput,required=False)
@@ -43,7 +51,8 @@ def driver_service(request):
     vehicle=assigned_vehicle(request.user)
     requests=DriverServiceRequest.objects.filter(driver=request.user).select_related('vehicle','updated_by')
     upcoming=MaintenanceItem.objects.filter(vehicle=vehicle,kind='service',completed_at__isnull=True).select_related('vehicle') if vehicle else MaintenanceItem.objects.none()
-    return render(request,'fleet/driver_service.html',{'service_screen':True,'vehicle':vehicle,'service_requests':requests,'upcoming_service':[{'item':item,'state':item.status_info()} for item in upcoming]})
+    history=MaintenanceItem.objects.filter(vehicle=vehicle,kind='service',completed_at__isnull=False).order_by('-completed_at')[:20] if vehicle else []
+    return render(request,'fleet/driver_service.html',{'service_screen':True,'vehicle':vehicle,'service_requests':requests,'upcoming_service':[{'item':item,'state':item.status_info()} for item in upcoming],'maintenance_history':history})
 
 
 @login_required
@@ -70,7 +79,7 @@ def driver_service_edit(request,pk=None):
                     if changes:
                         AuditEvent.objects.create(actor=request.user,action='Водій змінив сервісний запис',detail=(f'Запис №{item.pk}, {item.tractor_plate}: '+'; '.join(changes))[:1500])
                         from .push import enqueue_staff
-                        enqueue_staff('staff_service')
+                        enqueue_staff('staff_service',message=service_push_message(item),service_request=item)
                     return redirect('driver_service')
             else:
                 # Recheck assignment at submission, so a stale form cannot select another vehicle.
@@ -85,7 +94,7 @@ def driver_service_edit(request,pk=None):
                     if created:
                         AuditEvent.objects.create(actor=request.user,action='Водій додав сервісний запис',detail=f'Запис №{item.pk}, {item.tractor_plate}: {item.title}'[:1500])
                         from .push import enqueue_staff
-                        enqueue_staff('staff_service')
+                        enqueue_staff('staff_service',message=service_push_message(item),service_request=item)
                     return redirect('driver_service')
     return render(request,'fleet/driver_service_form.html',{'service_screen':True,'form':form,'vehicle':vehicle,'record':record})
 

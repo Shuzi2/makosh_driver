@@ -239,6 +239,15 @@ if (liveTtnRows.length) {
 // Driver TTN notices are kept independently for each dispatcher.
 const ttnNoticeBox=document.querySelector('[data-ttn-notifications]');
 if(ttnNoticeBox){
+  document.addEventListener('click',event=>{
+    if(ttnNoticeBox.open && !ttnNoticeBox.contains(event.target)) ttnNoticeBox.open=false;
+  });
+  document.addEventListener('keydown',event=>{
+    if(event.key==='Escape' && ttnNoticeBox.open){
+      ttnNoticeBox.open=false;
+      ttnNoticeBox.querySelector('summary')?.focus();
+    }
+  });
   const badge=ttnNoticeBox.querySelector('[data-ttn-count]'), list=ttnNoticeBox.querySelector('[data-ttn-items]');
   let pending=false, previousCount=null, previousItems='';
   async function refreshTtnNotices(){
@@ -251,7 +260,8 @@ if(ttnNoticeBox){
       const data=await response.json();
       badge.hidden=!data.unread;badge.textContent=data.unread>99?'99+':String(data.unread);
       if(previousCount!==null && data.unread>previousCount){
-        const toast=document.createElement('div');toast.className='ttn-notice-toast';toast.setAttribute('role','status');toast.textContent='Нове повідомлення від водія · перегляньте';document.body.append(toast);setTimeout(()=>toast.remove(),7000);
+        const latest=data.items.find(item=>!item.read);
+        const toast=document.createElement('div');toast.className='ttn-notice-toast';toast.setAttribute('role','status');toast.textContent=latest?[latest.kind,latest.driver,latest.trip?'рейс №'+latest.trip:'',latest.location].filter(Boolean).join(' · '):'Нове повідомлення · перегляньте';document.body.append(toast);setTimeout(()=>toast.remove(),7000);
       }
       previousCount=data.unread;
       const itemsKey=JSON.stringify(data.items);
@@ -260,10 +270,12 @@ if(ttnNoticeBox){
       const fragment=document.createDocumentFragment();
       data.items.forEach(item=>{
         const link=document.createElement('a');link.href=item.url;link.className='ttn-notice'+(item.read?'':' is-unread');
-        const title=document.createElement('strong');title.textContent=item.kind+' · рейс №'+item.trip;
+        const title=document.createElement('strong');title.textContent=item.kind+(item.trip?' · рейс №'+item.trip:'');
         const info=document.createElement('span');info.textContent=item.driver+' · '+item.vehicle;
         const time=document.createElement('time');time.textContent=item.time;
-        link.append(title,info,time);
+        link.append(title,info);
+        if(item.location){const place=document.createElement('span');place.textContent=item.location+(item.ttn_number?' · ТТН №'+item.ttn_number:'');link.append(place);}
+        link.append(time);
         if(!item.read){
           let reading=false,read=false;
           const markViewed=async()=>{
