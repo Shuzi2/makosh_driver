@@ -1,0 +1,3 @@
+{% extends 'base.html' %}{% load static %}{% block extra_css %}<link rel="stylesheet" href="{% static 'driver_report_documents.css' %}?v=1">{% endblock %}{% block content %}
+<div class="ttn-header"><div><div class="eyebrow">ЗВІТ ВОДІЯ · ДОКУМЕНТИ</div><h1>ТТН водія</h1><p>{{ driver.full_name }} · документи згруповано за рейсами</p></div><a class="btn" href="{% url 'driver_report_detail' driver.pk %}">← До звіту водія</a></div>
+{% include 'fleet/driver_ttn_content.html' %}{% endblock %}

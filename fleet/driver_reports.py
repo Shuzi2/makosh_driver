@@ -283,28 +283,36 @@ def overview(request):
     guard(request)
     users=User.objects.filter(role='driver').order_by('full_name')
     period=PeriodForm(request.GET or None)
-    history_query=DriverReportHistory.objects.all()
     trip_query=Trip.objects.filter(status='completed').select_related('economics').prefetch_related('expenses','stops')
-    historical=[row for row in history_query if in_report_period(row,'archive',period)]
     completed=[trip for trip in trip_query if in_report_period(trip,'live',period)]
-    by_driver={};live_driver={};unlinked={}
-    for item in historical:
-        if item.driver_id: by_driver.setdefault(item.driver_id,[]).append(item)
-        else: unlinked.setdefault(item.driver_label,[]).append(item)
+    live_driver={}
     for item in completed: live_driver.setdefault(item.driver_id,[]).append(item)
-    rows=[{'driver':user,'historical':len(by_driver.get(user.pk,[])),'live':len(live_driver.get(user.pk,[])), 'history_sums':history_totals(by_driver.get(user.pk,[])), 'live_finance':live_financial_totals(live_driver.get(user.pk,[]))} for user in users]
-    unmatched=[{'driver_label':label,'count':len(items)} for label,items in unlinked.items()]
-    live_km=[];live_fuel=[]
+    rows=[{'driver':user,'live':len(live_driver.get(user.pk,[])), 'totals':period_totals([],live_driver.get(user.pk,[]))['live'], 'metrics':report_insights([],live_driver.get(user.pk,[]))['live']} for user in users]
+    comparable=[row for row in rows if row['totals']['kilometers']['value'] is not None]
+    comparable.sort(key=lambda row:row['totals']['kilometers']['value'],reverse=True)
+    max_km=max((row['totals']['kilometers']['value'] for row in comparable),default=Decimal('0'))
+    distance_chart=[{'driver':row['driver'],'value':row['totals']['kilometers']['value'],
+                     'missing':row['totals']['kilometers']['missing'],
+                     'width':int(row['totals']['kilometers']['value']*100/max_km) if max_km>0 else 0} for row in comparable[:8]]
+    active_drivers=sorted((row for row in rows if row['live']),key=lambda row:row['live'],reverse=True)[:8]
+    max_trips=max((row['live'] for row in active_drivers),default=0)
+    trip_chart=[{'driver':row['driver'],'count':row['live'],'width':round(row['live']*100/max_trips)} for row in active_drivers]
+    fuel_drivers=sorted((row for row in rows if row['metrics']['fuel_rate'] is not None),key=lambda row:row['live'],reverse=True)[:8]
+    max_rate=max((row['metrics']['fuel_rate'] for row in fuel_drivers),default=Decimal('0'))
+    fuel_chart=[{'driver':row['driver'],'value':row['metrics']['fuel_rate'],'known':row['metrics']['fuel_count'],'total':row['live'],
+                 'width':round(row['metrics']['fuel_rate']*100/max_rate) if max_rate>0 else 0} for row in fuel_drivers]
+    totals=period_totals([],completed)['live']
+    monthly={}
+    missing_date=0
     for trip in completed:
-        try: economics=trip.economics
-        except TripEconomics.DoesNotExist: economics=None
-        km=report_kilometers(trip,economics);result=finances(trip,economics)
-        fuel=result.get('report_fuel_litres',trip.fuel_used_l)
-        if km is not None: live_km.append(km)
-        if fuel is not None: live_fuel.append(fuel)
-    live_totals={'km':sum(live_km,Decimal('0')) if live_km else None,'fuel':sum(live_fuel,Decimal('0')) if live_fuel else None}
-    insights=report_insights(historical,completed)
-    return render(request,'fleet/driver_reports.html',{'drivers':rows,'unmatched':unmatched,'history_total':len(historical),'live_total':len(completed),'history_sums':history_totals(historical),'live_sums':live_totals,'live_finance':live_financial_totals(completed),'insight_groups':[('Архів таблиці',insights['historical']),('Рейси сайту',insights['live'])],'period':period,'warning_count':sum(bool(row.anomalies) or bool(row.report_corrections) for row in historical)})
+        day=report_date(trip,'live')
+        if day is None: missing_date+=1;continue
+        month=day.strftime('%Y-%m')
+        monthly[month]=monthly.get(month,0)+1
+    months=sorted(monthly.items())[-8:]
+    max_month=max((count for _,count in months),default=0)
+    timeline=[{'label':f'{key[5:]}.{key[:4]}','count':count,'height':max(6,round(count*100/max_month))} for key,count in months]
+    return render(request,'fleet/driver_reports.html',{'drivers':rows,'live_total':len(completed),'totals':totals,'insight':report_insights([],completed)['live'],'distance_chart':distance_chart,'trip_chart':trip_chart,'fuel_chart':fuel_chart,'timeline':timeline,'missing_date':missing_date,'period':period})
 
 class PeriodForm(forms.Form):
     start=forms.DateField(label='З',required=False,widget=forms.DateInput(format='%Y-%m-%d',attrs={'type':'date'}))
@@ -411,7 +419,26 @@ def report_context(driver=None,label=None,period=None,query=''):
 @login_required
 def detail(request,pk):
     guard(request);driver=get_object_or_404(User,pk=pk,role='driver')
-    return render(request,'fleet/driver_report_detail.html',report_context(driver=driver,period=PeriodForm(request.GET or None),query=request.GET.get('q','').strip()[:150]))
+    context=report_context(driver=driver,period=PeriodForm(request.GET or None),query=request.GET.get('q','').strip()[:150])
+    if request.user.role=='moderator':
+        from .permissions_models import ModeratorPermissionSettings
+        permissions,_=ModeratorPermissionSettings.objects.get_or_create(pk=1)
+        context['can_view_driver_documents']=permissions.view_documents
+    else: context['can_view_driver_documents']=True
+    return render(request,'fleet/driver_report_detail.html',context)
+
+@login_required
+def driver_ttns(request,pk):
+    from django.core.paginator import Paginator
+    from django.db.models import Prefetch
+    from .models import Document
+    from .views import trips_for
+    guard(request);driver=get_object_or_404(User,pk=pk,role='driver')
+    docs=Document.objects.filter(kind__in=[Document.Kind.TTN,Document.Kind.SIGNED_TTN]).select_related('stop').order_by('stop__position','uploaded_at','pk')
+    trips=trips_for(request.user).filter(driver=driver,documents__kind__in=[Document.Kind.TTN,Document.Kind.SIGNED_TTN],documents__deleted_at__isnull=True).order_by('-planned_date','-pk').distinct().prefetch_related(Prefetch('documents',queryset=docs,to_attr='ttn_documents'))
+    page=Paginator(trips,20).get_page(request.GET.get('page'))
+    template='fleet/driver_ttn_content.html' if request.GET.get('view')=='dialog' else 'fleet/driver_report_documents.html'
+    return render(request,template,{'driver':driver,'page':page,'dialog_mode':request.GET.get('view')=='dialog'})
 
 @login_required
 def unmatched_detail(request,label):

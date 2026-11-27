@@ -35,6 +35,7 @@ MODERATOR_ROUTES = {
     'original_received': ('view_documents', 'edit_documents'),
     'report': ('view_reports', 'edit_trips'), 'analytics': ('view_reports', 'edit_trips'),
     'driver_reports': ('view_reports','edit_trips'), 'driver_report_export': ('view_reports','edit_trips'), 'driver_report_archive_export': ('view_reports','edit_trips'), 'driver_report_defaults': ('view_reports','edit_trips'), 'driver_report_detail': ('view_reports','edit_trips'), 'driver_report_unmatched': ('view_reports','edit_trips'), 'driver_economics_edit': ('view_reports','edit_trips'), 'driver_economics_preview': ('view_reports','edit_trips'),
+    'driver_report_documents': ('view_reports','view_reports'),
     'driver_archive_prices': ('view_reports','edit_trips'),
     'waybill_list': ('view_reports', 'view_reports'), 'waybill_detail': ('view_reports', 'view_reports'), 'waybill_edit': ('view_reports', 'edit_trips'),
     'report_edit': ('view_reports', 'edit_trips'),
@@ -84,6 +85,7 @@ class DriverPermissionMiddleware:
                 'ttn_notifications': ('view_trips', 'view_documents'),
                 'ttn_notification_read': ('view_trips', 'view_documents'),
                 'expense_receipt': ('view_trips', 'view_documents'),
+                'driver_report_documents': ('view_reports', 'view_documents'),
             }
             if any(not getattr(settings, field) for field in prerequisites.get(name, ())):
                 raise PermissionDenied

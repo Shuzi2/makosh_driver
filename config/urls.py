@@ -30,6 +30,7 @@ path('report/drivers/defaults/',driver_reports.edit_defaults,name='driver_report
 path('report/drivers/<int:pk>/excel/',driver_report_export.export_driver,name='driver_report_export'),
 path('report/drivers/archive/<str:label>/excel/',driver_report_export.export_driver,name='driver_report_archive_export'),
 path('report/drivers/<int:pk>/',driver_reports.detail,name='driver_report_detail'),
+path('report/drivers/<int:pk>/documents/',driver_reports.driver_ttns,name='driver_report_documents'),
 path('report/drivers/archive/<str:label>/',driver_reports.unmatched_detail,name='driver_report_unmatched'),
 path('report/archive/<int:pk>/prices/',driver_reports.edit_archive_prices,name='driver_archive_prices'),
 path('report/archive/<int:pk>/cell/',driver_reports.edit_archive_cell,name='driver_report_archive_cell'),

@@ -19,6 +19,59 @@ class DriverReportsTests(TestCase):
         self.admin=User.objects.create_user('+380501234501',role='admin',full_name='Логіст',must_change_password=False)
         self.driver=User.objects.create_user('+380501234502',role='driver',full_name='Тестовий Водій',must_change_password=False)
 
+    def test_driver_report_lists_only_active_ttn_for_selected_driver(self):
+        from fleet.models import Document
+        from fleet.permissions_models import ModeratorPermissionSettings
+        vehicle=Vehicle.objects.create(plate='DOCS1',kind='tent')
+        other=User.objects.create_user('+380501234503',role='driver',full_name='Інший водій',must_change_password=False)
+        def make_trip(driver): return Trip.objects.create(vehicle=vehicle,driver=driver,created_by=self.admin,origin='Київ',destination='Одеса',cargo='Зерно',planned_tons=1,planned_date=timezone.localdate(),status='completed',completed_at=timezone.now())
+        trip=make_trip(self.driver);other_trip=make_trip(other)
+        def doc(trip,name,kind='ttn',deleted_at=None): return Document.all_objects.create(trip=trip,kind=kind,file='test/file.jpg',original_name=name,content_type='image/jpeg',size=100,uploaded_by=self.admin,deleted_at=deleted_at)
+        doc(trip,'loading.jpg');doc(trip,'signed.jpg','signed_ttn');doc(trip,'other.jpg','other');doc(trip,'deleted.jpg',deleted_at=timezone.now());doc(other_trip,'private.jpg')
+        url=reverse('driver_report_documents',args=[self.driver.pk])
+        self.client.force_login(self.admin)
+        report=self.client.get(reverse('driver_report_detail',args=[self.driver.pk]))
+        self.assertContains(report,'Усі ТТН водія')
+        self.assertContains(report,'data-driver-ttn-dialog')
+        page=self.client.get(url)
+        self.assertContains(page,'loading.jpg');self.assertContains(page,'signed.jpg')
+        for name in ('other.jpg','deleted.jpg','private.jpg'): self.assertNotContains(page,name)
+        self.assertContains(page,f'Рейс №{trip.pk}')
+        fragment=self.client.get(url,{'view':'dialog'})
+        self.assertContains(fragment,'loading.jpg')
+        self.assertNotContains(fragment,'<!doctype html>')
+        moderator=User.objects.create_user('+380501234504',role='moderator',full_name='Модератор',must_change_password=False)
+        permissions,_=ModeratorPermissionSettings.objects.get_or_create(pk=1);permissions.view_reports=True;permissions.view_documents=False;permissions.save()
+        self.client.force_login(moderator)
+        self.assertNotContains(self.client.get(reverse('driver_report_detail',args=[self.driver.pk])),'Усі ТТН водія')
+        self.assertEqual(self.client.get(url).status_code,403)
+        permissions.view_documents=True;permissions.save()
+        self.assertEqual(self.client.get(url).status_code,200)
+        self.client.force_login(self.driver);self.assertEqual(self.client.get(url).status_code,403)
+
+    def test_archive_corrections_match_table_totals_and_excel(self):
+        from io import BytesIO
+        from zipfile import ZipFile
+        from xml.etree import ElementTree
+        row=DriverReportHistory.objects.create(source_sheet='Перевірка',source_row=901,driver=self.driver,driver_label=self.driver.full_name,source_raw=[12],source_values={'kilometers':'100','fuel_rate':'30','fuel_price':'50'},display_values={'extra_columns':[{'column':'AB','value':'30'}]},report_corrections={'source_number':'77','fuel_litres':'35.25'})
+        self.client.force_login(self.admin)
+        page=self.client.get(reverse('driver_report_detail',args=[self.driver.pk]))
+        self.assertContains(page,'driver_sheet_polish.css')
+        self.assertNotContains(page,'driver-report-wide<link')
+        rendered=page.context['historical'][0]
+        self.assertEqual(rendered.source_number,'77')
+        self.assertEqual(Decimal(str(rendered.extra_ab)),Decimal('35.25'))
+        self.assertEqual(page.context['period_totals']['archive']['fuel_litres']['value'],Decimal('35.25'))
+        result=self.client.get(reverse('driver_report_export',args=[self.driver.pk]))
+        with ZipFile(BytesIO(result.content)) as book:
+            sheet=ElementTree.fromstring(book.read('xl/worksheets/sheet2.xml'))
+            ns={'x':'http://schemas.openxmlformats.org/spreadsheetml/2006/main'}
+            cells={c.attrib['r']:''.join(c.itertext()) for c in sheet.findall('.//x:row[@r="2"]/x:c',ns)}
+            self.assertEqual(cells['A2'],'77')
+            self.assertEqual(Decimal(cells['AB2']),Decimal('35.25'))
+        row.refresh_from_db();self.assertEqual(row.source_values['fuel_rate'],'30')
+
+
     def test_driver_expenses_are_listed_summed_and_converted_in_report(self):
         from fleet.driver_report_export import live_row
         vehicle=Vehicle.objects.create(plate='EXPENSE1',kind='tent')
@@ -615,14 +668,52 @@ class DriverReportsTests(TestCase):
         self.assertEqual(result['fuel_rate'],Decimal('22.5'))
         self.assertEqual((result['loss_count'],result['profit_count'],result['missing_profit']),(1,2,1))
 
-    def test_overview_period_filters_driver_and_history(self):
+    def test_overview_excludes_archive_without_removing_it(self):
         from datetime import date
         DriverReportHistory.objects.create(source_sheet='A',source_row=1,driver=self.driver,driver_label=self.driver.full_name,trip_date=date(2026,1,1),source_values={'kilometers':10},display_values={})
         DriverReportHistory.objects.create(source_sheet='A',source_row=2,driver=self.driver,driver_label=self.driver.full_name,trip_date=date(2026,2,1),source_values={'kilometers':30},display_values={})
         self.client.force_login(self.admin)
         response=self.client.get(reverse('driver_reports'),{'start':'2026-02-01','end':'2026-02-28'})
-        self.assertEqual(response.context['history_total'],1)
-        self.assertEqual(response.context['history_sums']['kilometers'],Decimal('30'))
+        self.assertEqual(response.context['live_total'],0)
+        self.assertIsNone(response.context['totals']['kilometers']['value'])
+        self.assertEqual(DriverReportHistory.objects.count(),2)
+        self.assertNotContains(response,'Історичний пробіг')
+
+    def test_meeting_overview_matches_driver_report_and_marks_missing_values(self):
+        vehicle=Vehicle.objects.create(plate='MEET01',kind='tent')
+        trip=Trip.objects.create(vehicle=vehicle,driver=self.driver,created_by=self.admin,origin='А',destination='Б',cargo='Вантаж',planned_tons=1,planned_date=timezone.localdate(),status='completed',completed_at=timezone.now(),distance_km=100,fuel_used_l=30)
+        TripEconomics.objects.create(trip=trip,price=10000,daily_rate=1000,days=1,bonus_per_km=3,fuel_price=50,adblue_price=20,adblue_rate=1,depreciation_per_km=9,credit_per_km=6,extra_cost=100)
+        Trip.objects.create(vehicle=vehicle,driver=self.driver,created_by=self.admin,origin='В',destination='Г',cargo='Вантаж',planned_tons=1,planned_date=timezone.localdate(),status='completed',completed_at=timezone.now())
+        DriverReportHistory.objects.create(source_sheet='Архів',source_row=900,driver=self.driver,driver_label=self.driver.full_name,source_values={'kilometers':999999})
+        self.client.force_login(self.admin)
+        overview=self.client.get(reverse('driver_reports'))
+        detail=self.client.get(reverse('driver_report_detail',args=[self.driver.pk]))
+        row=next(item for item in overview.context['drivers'] if item['driver']==self.driver)
+        self.assertEqual(overview.context['live_total'],2)
+        for key in ('kilometers','fuel_litres','wage','revenue','profit'):
+            self.assertEqual(row['totals'][key],detail.context['period_totals']['live'][key])
+            self.assertEqual(row['totals'][key]['missing'],1)
+        self.assertEqual(row['totals']['kilometers']['value'],Decimal('100'))
+        self.assertEqual(row['totals']['profit']['value'],Decimal('5580'))
+        self.assertEqual(overview.context['distance_chart'][0]['value'],Decimal('100'))
+        self.assertEqual(overview.context['distance_chart'][0]['missing'],1)
+        self.assertEqual(overview.context['distance_chart'][0]['width'],100)
+        self.assertEqual(overview.context['insight']['fuel_rate'],Decimal('30'))
+        self.assertEqual(overview.context['insight']['fuel_count'],1)
+        self.assertEqual(overview.context['fuel_chart'][0]['value'],Decimal('30'))
+        self.assertEqual((overview.context['fuel_chart'][0]['known'],overview.context['fuel_chart'][0]['total']),(1,2))
+        self.assertEqual(overview.context['trip_chart'][0]['count'],2)
+        self.assertContains(overview,'Середня витрата за водіями')
+        self.assertContains(overview,'Пробіг за водіями')
+        self.assertEqual(overview.context['missing_date'],2)
+        self.assertNotContains(overview,'Повнота даних')
+        self.assertEqual(overview.context['timeline'],[])
+        trip.route_enabled=True;trip.save(update_fields=['route_enabled'])
+        TripStop.objects.create(trip=trip,position=1,kind='load',address='А',cargo='Вантаж',planned_tons=1,arrived_at=timezone.now())
+        overview=self.client.get(reverse('driver_reports'))
+        self.assertEqual(overview.context['timeline'][0]['count'],1)
+        self.assertEqual(overview.context['missing_date'],1)
+        self.assertContains(overview,'Рейси за місяцями')
 
     def test_import_is_idempotent_and_changed_source_is_not_overwritten(self):
         row=[1,46328,100,1000,1,3,20,50,30,1,9,6,10000,0,'Місто','Склад','Клієнт','Маршрут',1500,20,1500,1300,4320,22,43.2,.22]
